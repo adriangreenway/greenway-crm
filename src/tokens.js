@@ -35,6 +35,9 @@ export const COLORS = {
   teal: "#2A6B6B",
   tealLight: "#E8F5F5",
 
+  // Accent
+  gold: "#D4A574",
+
   // Additional
   purple: "#7C3AED",
   purpleLight: "#F3ECFF",

@@ -84,7 +84,7 @@ const GigSheetCard = ({ bookedLeads, onSelectLead }) => {
   }, [open]);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", height: "100%" }}>
       <button
         onClick={() => {
           if (bookedLeads.length === 0) return;
@@ -92,6 +92,7 @@ const GigSheetCard = ({ bookedLeads, onSelectLead }) => {
         }}
         style={{
           width: "100%",
+          height: "100%",
           background: COLORS.white,
           border: `1px solid ${COLORS.border}`,
           borderRadius: RADII.lg,
@@ -218,7 +219,7 @@ const CueSheetCard = ({ bookedLeads, onSelectLead }) => {
   }, [open]);
 
   return (
-    <div ref={ref} style={{ position: "relative" }}>
+    <div ref={ref} style={{ position: "relative", height: "100%" }}>
       <button
         onClick={() => {
           if (bookedLeads.length === 0) return;
@@ -226,6 +227,7 @@ const CueSheetCard = ({ bookedLeads, onSelectLead }) => {
         }}
         style={{
           width: "100%",
+          height: "100%",
           background: COLORS.white,
           border: `1px solid ${COLORS.border}`,
           borderRadius: RADII.lg,
@@ -425,7 +427,7 @@ const BandOps = ({
       </div>
 
       {/* Tool cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 16, alignItems: "stretch" }}>
         <GigSheetCard
           bookedLeads={bookedLeads}
           onSelectLead={(lead) => setGigSheetLead(lead)}

@@ -41,7 +41,7 @@ const PlaceholderCard = ({ icon, title, description, week }) => (
         color: COLORS.black,
         fontFamily: FONTS.body,
         marginBottom: 8,
-        paddingRight: 60,
+        paddingRight: 70,
       }}
     >
       {title}

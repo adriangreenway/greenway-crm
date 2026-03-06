@@ -11,6 +11,7 @@ import BandOps from "./pages/BandOps";
 import Content from "./pages/Content";
 import AiCrew from "./pages/AiCrew";
 import Settings from "./pages/Settings";
+import MediaVaultPublic from "./components/MediaVaultPublic";
 
 // Login screen
 const LoginScreen = ({ onSignIn }) => {
@@ -192,6 +193,14 @@ function useWindowWidth() {
 }
 
 export default function App() {
+  // Check for public vault route FIRST — renders independently, no auth
+  // Strip base path (handles both /vault/ and /greenway-crm/vault/)
+  const path = window.location.pathname;
+  const vaultMatch = path.match(/\/vault\/(.+?)(?:\/)?$/);
+  if (vaultMatch) {
+    return <MediaVaultPublic slug={vaultMatch[1]} />;
+  }
+
   const {
     authenticated,
     loading: authLoading,
@@ -371,7 +380,23 @@ export default function App() {
               onNavigateToSettings={() => handleNavChange("settings")}
             />
           )}
-          {activeNav === "content" && <Content />}
+          {activeNav === "content" && (
+            <Content
+              galleries={data.galleries}
+              createGallery={data.createGallery}
+              updateGallery={data.updateGallery}
+              deleteGallery={data.deleteGallery}
+              fetchGalleryPhotos={data.fetchGalleryPhotos}
+              uploadGalleryPhoto={data.uploadGalleryPhoto}
+              updateGalleryPhoto={data.updateGalleryPhoto}
+              deleteGalleryPhoto={data.deleteGalleryPhoto}
+              deleteGalleryPhotos={data.deleteGalleryPhotos}
+              socialPosts={data.socialPosts}
+              createSocialPost={data.createSocialPost}
+              updateSocialPost={data.updateSocialPost}
+              deleteSocialPost={data.deleteSocialPost}
+            />
+          )}
           {activeNav === "aicrew" && <AiCrew />}
           {activeNav === "settings" && <Settings />}
         </div>
