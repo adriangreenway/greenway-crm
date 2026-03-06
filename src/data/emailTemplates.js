@@ -84,25 +84,27 @@ export const emailTemplates = [
     category: "inquiry",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+    subject: "The Greenway Band — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement! We're available on {{event_date}} and would love to come play at {{venue}}.
 
-I'd love to chat more about {{event_date}} at {{venue}} and walk you through what we do. The best way to get a feel for the band is to hop on a quick call. I can walk you through some options, answer any questions, and we can talk through the vision for the night.
+I've put together a proposal with everything you need to know about the band, what your night looks like, and pricing. Take a look whenever you get a chance.
 
-In the meantime, I put together a proposal with some more details: {{proposal_url}}
+🔗 {{proposal_url}}
 
-Looking forward to connecting!
+If you'd like, I'm happy to hop on a quick call to walk through the proposal and hear more about what you have in mind. Here's my calendar: {{consultation_link}}
 
-Best,
-Adrian`,
+Looking forward to hearing from you!`,
+    signOff: "Best,\nAdrian",
     mergeFields: [
       "partner_1_first",
       "event_date",
       "venue",
       "proposal_url",
+      "consultation_link",
     ],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "If the bride mentioned specific details in her inquiry (venue feel, party energy, song requests, intimate vs big party), weave one natural reference into the second paragraph. Do not list details back. Example: 'I can already tell this is going to be a great party' or 'It sounds like the music is going to be a big part of your night.'",
     notes: "Delivers proposal link. Pushes toward consultation.",
   },
 
@@ -114,25 +116,27 @@ Adrian`,
     category: "inquiry",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Kirby Collective | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+    subject: "The Kirby Collective — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement! We're available on {{event_date}} and would love to come play at {{venue}}.
 
-I'd love to chat more about {{event_date}} at {{venue}} and walk you through what we do. The best way to get a feel for the group is to hop on a quick call. I can walk you through some options, answer any questions, and we can talk through the vision for the night.
+I put together a proposal for you with everything you need to know about the band, what your night looks like, and pricing. Take a look whenever you get a chance.
 
-In the meantime, I put together a proposal with some more details: {{proposal_url}}
+🔗 {{proposal_url}}
 
-Looking forward to connecting!
+If you'd like, I'm happy to hop on a quick call to walk through the proposal and hear more about what you have in mind. Here's my calendar: {{consultation_link}}
 
-Best,
-Adrian`,
+Looking forward to hearing from you!`,
+    signOff: "Best,\nAdrian",
     mergeFields: [
       "partner_1_first",
       "event_date",
       "venue",
       "proposal_url",
+      "consultation_link",
     ],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "Same as 4.1. If the inquiry included details, weave one natural reference into the second paragraph. KC specific: never reference Greenway, never mention a parent company, never use the word 'budget.'",
     notes: "KC version of 4.1. Same structure, KC branding.",
   },
 
@@ -144,68 +148,76 @@ Adrian`,
     category: "inquiry",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    variants: {
-      a: {
-        label: "Saturday (10pc minimum)",
-        body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+    subject: "The Greenway Band — {{event_date}}",
+    variants: [
+      {
+        id: '4.3',
+        label: 'Primary (New Client, Saturday <10pc)',
+        trigger: 'Saturday, peak season, client requested fewer than 10 pieces',
+        subject: 'The Greenway Band — {{event_date}}',
+        body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement! We're available on {{event_date}} and would love to come play at {{venue}}.
 
-I'd love to be part of {{event_date}}. For Saturday evenings during peak season, our minimum configuration is a 10 piece band. That's our sweet spot for keeping the energy up all night in a ballroom setting, and it's what most of our couples go with.
+For Saturday weddings during peak season, The Greenway Band performs as a 10 piece or larger. It's what gives a Greenway show its full sound and energy, and it's our standard for Saturday events.
 
-I'd love to hop on a quick call and walk you through what that looks like. In the meantime, here's a proposal with more details: {{proposal_url}}
+I've got a proposal for you showing what the 10 piece looks like. Take a look whenever you get a chance.
 
-Looking forward to it!
+🔗 {{proposal_url}}
 
-Best,
-Adrian`,
+I also put together a group called The Kirby Collective that could be a great fit for what you're looking for. Amazing musicians and a sound that really fills the room, and they play as a 6 to 8 piece. Happy to send over their info or hop on a quick call to talk through your options.
+
+Looking forward to hearing from you!`,
+        signOff: 'Best,\nAdrian',
+        aiNotes: 'If the inquiry mentioned specific details (venue, guest count), weave one natural reference into paragraph 1. The KC redirect paragraph should stay as is. Do not personalize the KC description.'
       },
-      b: {
-        label: "Sunday / Friday (standard)",
-        body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+      {
+        id: '4.3b',
+        label: 'Returning Client or Planner',
+        trigger: 'Known planner or returning client asks for fewer than 10 pieces on a Saturday',
+        subject: 'Re: {{original_subject}}',
+        body: `Hi, {{partner_1_first}}!
 
-I'd love to chat more about {{event_date}} at {{venue}} and walk you through what we do. The best way to get a feel for the band is to hop on a quick call. I can walk you through some options, answer any questions, and we can talk through the vision for the night.
+Great question. For Saturday weddings during peak season, we keep The Greenway Band at a 10 piece minimum. It's what makes the show feel like a Greenway show.
 
-In the meantime, I put together a proposal with some more details: {{proposal_url}}
-
-Looking forward to connecting!
-
-Best,
-Adrian`,
+I put together a group called The Kirby Collective that would be perfect for a 6 or 8 piece on a Saturday. Same caliber of musicians, and they sound great. Want me to send over their info?`,
+        signOff: 'Best,\nAdrian',
+        aiNotes: 'Peer tone. No congratulations, no proposal link. They already know the band.'
       },
-      c: {
-        label: "Weekday (flexible config)",
-        body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+      {
+        id: '4.3c',
+        label: 'Client Pushback on 10pc Minimum',
+        trigger: 'Client received 4.3, pushes back or asks why',
+        subject: null,
+        body: `Totally understand. The 10 piece is where The Greenway Band really comes alive. The horns, the vocal harmonies, the energy all depend on having the full section. We want every Greenway show to deliver at the level our couples expect, and that's the standard we hold for Saturday events.
 
-I'd love to chat more about {{event_date}} at {{venue}} and walk you through what we do. Weekday events are great because we have a lot of flexibility with configuration. I can walk you through some options on a quick call.
+I actually put together a group called The Kirby Collective that would be great for this. Same caliber of musicians, and they sound amazing as a 6 to 8 piece. Want me to send over their info?`,
+        signOff: null,
+        aiNotes: 'Mid thread reply. No greeting, no sign off. If the client\'s pushback mentioned specific reasons (budget, venue size, headcount), acknowledge the specific reason naturally: "Totally understand, and [venue] would sound great with a tighter group." One line max.'
+      }
+    ],
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement! We're available on {{event_date}} and would love to come play at {{venue}}.
 
-In the meantime, I put together a proposal with some more details: {{proposal_url}}
+For Saturday weddings during peak season, The Greenway Band performs as a 10 piece or larger. It's what gives a Greenway show its full sound and energy, and it's our standard for Saturday events.
 
-Looking forward to connecting!
+I've got a proposal for you showing what the 10 piece looks like. Take a look whenever you get a chance.
 
-Best,
-Adrian`,
-      },
-    },
-    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
+🔗 {{proposal_url}}
 
-I'd love to be part of {{event_date}}. For Saturday evenings during peak season, our minimum configuration is a 10 piece band. That's our sweet spot for keeping the energy up all night in a ballroom setting, and it's what most of our couples go with.
+I also put together a group called The Kirby Collective that could be a great fit for what you're looking for. Amazing musicians and a sound that really fills the room, and they play as a 6 to 8 piece. Happy to send over their info or hop on a quick call to talk through your options.
 
-I'd love to hop on a quick call and walk you through what that looks like. In the meantime, here's a proposal with more details: {{proposal_url}}
-
-Looking forward to it!
-
-Best,
-Adrian`,
+Looking forward to hearing from you!`,
+    signOff: 'Best,\nAdrian',
     mergeFields: [
       "partner_1_first",
       "event_date",
       "venue",
       "proposal_url",
+      "original_subject",
     ],
     aiSections: [],
     collisionRules: null,
+    aiNotes: 'If the inquiry mentioned specific details (venue, guest count), weave one natural reference into paragraph 1. The KC redirect paragraph should stay as is. Do not personalize the KC description.',
     notes:
-      "Variant A: Saturday 10pc minimum. Variant B: Sun/Fri standard. Variant C: Weekday flexible.",
+      "Variant 4.3: Primary new client. Variant 4.3b: Returning client/planner. Variant 4.3c: Client pushback.",
   },
 
   // 4.4 — Decline (Already Booked)
@@ -216,16 +228,15 @@ Adrian`,
     category: "decline",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Thank you so much for reaching out. Unfortunately, we're already booked on {{event_date}}.
+    subject: "Re: Inquiry for {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out. Unfortunately, we're already booked on {{event_date}}. I appreciate you thinking of us!
 
-Congratulations on your engagement, and I hope you find the perfect band for the night!
-
-Best,
-Adrian`,
+If your plans shift and the date changes, just let me know. I'd be happy to check our availability.`,
+    signOff: "Best,\nAdrian",
     mergeFields: ["partner_1_first", "event_date"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "Fully automated. No personalization needed. Brand routing: {{brand_email}} routes the from address. Copy is identical for both brands.",
     notes: "Simple decline. Date conflict.",
   },
 
@@ -237,18 +248,17 @@ Adrian`,
     category: "decline",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Thank you so much for reaching out. Unfortunately, we're already booked on {{event_date}}.
+    subject: "Re: The Greenway Band — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
 
-That said, I put together a group called The Kirby Collective that might be a great fit for your evening. They're a {{piece_count}} piece band that brings a really warm, connected energy to the room. Think of it as the kind of night where every song feels like it's playing just for you and your guests.
+Unfortunately, we're already booked on {{event_date}}. But I put together a group called The Kirby Collective that might be a great fit. They're a 6 to 10 piece band with amazing musicians and a sound that really fills the room.
 
-I can send over some more details if you're interested!
-
-Best,
-Adrian`,
-    mergeFields: ["partner_1_first", "event_date", "piece_count"],
+If you're interested, I can send over their info. I think you'd really like what they do.`,
+    signOff: "Best,\nAdrian",
+    mergeFields: ["partner_1_first", "event_date"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "Always sends from Greenway. The Avondale Rule applies: 'I put together' is honest ownership without revealing corporate structure. Never say 'our other band,' 'we also have,' or 'my company.' No KC link or proposal in this email. If client says yes, next touchpoint is Template 4.2 from KC email.",
     notes: "Greenway booked, route to KC.",
   },
 
@@ -260,14 +270,21 @@ Adrian`,
     category: "hold",
     approval: "require_approval",
     stageTrigger: ["Proposal Sent"],
-    subject: "Re: {{brand_name}} | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Just wanted to let you know we're holding {{event_date}} for you. No rush at all on making a decision. Whenever you're ready, just let me know and I can get the contract over to you.
+    subject: "Re: {{brand_name}} — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
 
-Best,
-Adrian`,
-    mergeFields: ["partner_1_first", "brand_name", "event_date"],
+We're available on {{event_date}} and would love to come play at {{venue}}! I should mention that we do have another couple looking at this date as well, but nothing is confirmed yet so it's still open.
+
+I put together a custom proposal for you here: {{proposal_url}}
+
+I'd love to hop on a quick call to chat through everything. You can book a time here: {{consultation_link}}
+
+Looking forward to hearing from you!`,
+    signOff: "Best,\nAdrian",
+    mergeFields: ["partner_1_first", "brand_name", "event_date", "venue", "proposal_url", "consultation_link"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "AI layer checks pipeline to confirm a hold exists before triggering this template. If the other inquiry has booked or dropped off, route to Template 4.1 instead.",
     notes: "Gentle hold notification.",
   },
 
@@ -279,16 +296,17 @@ Adrian`,
     category: "hold",
     approval: "require_approval",
     stageTrigger: ["Proposal Sent"],
-    subject: "Re: {{brand_name}} | {{event_date}}",
-    body: `Hi, {{partner_1_first}}! Just a quick heads up that we've gotten another inquiry for {{event_date}}. I wanted to give you first priority since we've already been talking. If you'd like to lock in the date, let me know and I can get the contract over to you today.
+    subject: "Re: {{brand_name}} — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! I wanted to give you a heads up on {{event_date}}. Since I sent over your proposal, we've had another couple reach out about the same date.
 
-No pressure at all! Just wanted to keep you in the loop.
+Nothing is booked yet and the date is still yours if you want it. Just wanted to make sure you had the full picture.
 
-Best,
-Adrian`,
+Let me know if you have any questions or if you'd like to hop on a quick call!`,
+    signOff: "Best,\nAdrian",
     mergeFields: ["partner_1_first", "brand_name", "event_date"],
     aiSections: [],
     collisionRules: "If 4.6b fires, skip 4.8 for this lead.",
+    aiNotes: "This email goes to the EXISTING lead (Lead A), not the new inquiry (Lead B). 48 hour minimum window: if second inquiry arrives within 48 hours of Lead A's proposal, system waits until the 48 hour mark to send. After 48 hours, fires immediately.",
     notes: "Competitive urgency. Skip 4.8 after this fires.",
   },
 
@@ -300,18 +318,17 @@ Adrian`,
     category: "inquiry",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "{{brand_name}} Inquiry",
+    subject: "Re: {{brand_name}} Inquiry",
     body: `Hi, {{partner_1_first}}! Thank you for reaching out and congratulations on your engagement!
 
-Whenever you have a date in mind, I'd love to check our availability and put together a proposal for you. In the meantime, feel free to check out some of what we do: {{proposal_url}}
+I'd love to check our availability for you. Do you have a date in mind? Once I know the date and a few details about your event, I can put together a custom proposal for you.
 
-Looking forward to connecting!
-
-Best,
-Adrian`,
-    mergeFields: ["partner_1_first", "brand_name", "proposal_url"],
+Looking forward to hearing from you!`,
+    signOff: "Best,\nAdrian",
+    mergeFields: ["partner_1_first", "brand_name"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "No proposal link, no consultation link, no pricing. This email exists only to get the date. If the inquiry includes details but no date, weave in a warm personal detail: 'The Astorian is such a beautiful space' or 'Sounds like it's going to be an amazing celebration.'",
     notes: "No date provided by lead.",
   },
 
@@ -324,13 +341,12 @@ Adrian`,
     approval: "require_approval",
     stageTrigger: ["New Lead"],
     subject: "Re: {{brand_name}} Inquiry",
-    body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had a date in mind yet. Whenever you're ready, I'd love to check our availability and put together a proposal for you.
-
-Thanks,
-Adrian`,
+    body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had a date in mind yet. Whenever you're ready, I'd love to check our availability and put together a proposal for you.`,
+    signOff: "Thanks,\nAdrian",
     mergeFields: ["partner_1_first", "brand_name"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "Fires 5 to 7 days after Template 4.7 with no response. Same thread (Re: subject). Last automated touchpoint in no date flow. If no response, lead goes cold. No further follow ups.",
     notes: "Follow up 5 to 7 days after 4.7.",
   },
 
@@ -342,16 +358,15 @@ Adrian`,
     category: "follow_up",
     approval: "require_approval",
     stageTrigger: ["Proposal Sent"],
-    subject: "Re: {{brand_name}} | {{event_date}}",
+    subject: "Re: {{brand_name}} — {{event_date}}",
     body: `Hi, {{partner_1_first}}! Just checking in on {{event_date}}. Did you have a chance to look over the proposal?
 
-No rush at all, just wanted to check in.
-
-Thanks,
-Adrian`,
+No rush at all, just wanted to check in.`,
+    signOff: "Thanks,\nAdrian",
     mergeFields: ["partner_1_first", "brand_name", "event_date"],
     aiSections: [],
     collisionRules: "Skip if 4.6b already fired for this lead.",
+    aiNotes: "Fires 5 to 7 days after initial response. Same thread. Proposal callback, not a decision question. If 4.6b (competitive notification) already fired within this window, skip 4.8. Closing is 'Thanks' not 'Best' per writing style profile.",
     notes: "Follow up 5 to 7 days after proposal. Skipped if 4.6b fired.",
   },
 
@@ -363,25 +378,19 @@ Adrian`,
     category: "agent",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    body: `Hi! Thanks for reaching out about {{event_date}}.
+    subject: "Re: {{agent_subject_line}}",
+    body: `Hey! Yes, we're available.
 
-Here's what I'm looking at for a {{piece_count}} piece:
+{{piece_count}} piece: {{total_price}} gross
 
-Gross: {{total_price}}
-
-Configuration:
-Vocals, keys, guitar, bass, drums, trumpet, saxophone, trombone, aux percussion, violin
-
-Let me know if you need anything else!
-
-Best,
-Adrian`,
-    mergeFields: ["event_date", "piece_count", "total_price"],
+Let me know!`,
+    signOff: "Best,\nAdrian",
+    mergeFields: ["agent_subject_line", "piece_count", "total_price"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "Agent emails always use 'gross' (commission math). No 'Hi, [Name]' greeting for agents. 'Hey!' is the opener. Reply on the agent's subject line. No proposal link, no instrument breakdown, no consultation offer. Include add on pricing lines only for services explicitly requested in the inquiry (cocktail hour, ceremony, continuous play). Always Greenway brand only.",
     notes:
-      "Terse. Gross pricing only. Bulleted instrument config. No proposal link.",
+      "Terse. Gross pricing only. No proposal link.",
   },
 
   // 4.9b — Planner Response
@@ -392,28 +401,40 @@ Adrian`,
     category: "agent",
     approval: "require_approval",
     stageTrigger: ["New Lead"],
-    subject: "The Greenway Band | {{event_date}}",
-    body: `Hi, {{planner_name}}! Thanks for reaching out about {{event_date}} at {{venue}}.
+    subject: "Re: {{brand_name}} — {{event_date}}",
+    body: `Hi, {{partner_1_first}}! Thank you for reaching out. We're available on {{event_date}} and would love to come play.
 
-For a {{piece_count}} piece band, here's the pricing breakdown:
+Here is our pricing:
 
-Band fee: {{total_price}}
+{{config_1_name}} — {{config_1_price}}
+{{config_1_instruments}}
+MC Services, Professional Sound and Lighting
 
-That includes full sound, lighting, MC services, and music during breaks and transitions. I can put together a proposal to forward to your couple if that would be helpful.
+{{config_2_name}} — {{config_2_price}}
+{{config_2_instruments}}
+MC Services, Professional Sound and Lighting
 
-I'd love to hop on a quick call to talk through the details if you have a few minutes!
+I've also put together a proposal page you can share with the couple if it's helpful:
 
-Best,
-Adrian`,
+🔗 {{proposal_url}}
+
+Happy to hop on a call with you or with the couple whenever works. Let me know.`,
+    signOff: "Best,\nAdrian",
     mergeFields: [
-      "planner_name",
+      "partner_1_first",
+      "brand_name",
       "event_date",
-      "venue",
-      "piece_count",
-      "total_price",
+      "config_1_name",
+      "config_1_price",
+      "config_1_instruments",
+      "config_2_name",
+      "config_2_price",
+      "config_2_instruments",
+      "proposal_url",
     ],
     aiSections: [],
     collisionRules: null,
+    aiNotes: "'Hi' for all planners (known or new). No 'gross' label (planners don't take commission). Price at top of each config block. Full instrument breakdown. Proposal link is optional couple forward ('if it's helpful'). If planner mentioned venue, couple name, or specific requests, weave one natural reference in. 'Let me know' with period, not exclamation. Peer tone.",
     notes: "Professional planner response with pricing breakdown.",
   },
 
@@ -500,38 +521,35 @@ Adrian`,
     category: "follow_up",
     approval: "require_approval",
     stageTrigger: ["Post Consultation", "Contract Sent"],
-    subject: "Re: {{brand_name}} | {{event_date}}",
-    variants: {
-      A: {
-        label: "No contract sent",
-        body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had any questions about anything we talked about. If you're ready to lock in the date, I can get the contract over to you.
-
-No rush at all! Let me know if there's anything I can help with.
-
-Thanks,
-Adrian`,
+    subject: "Re: {{brand_name}} — {{event_date}}",
+    variants: [
+      {
+        id: '4.15a',
+        label: 'Contract Not Yet Sent',
+        trigger: '3 to 5 days after recap (4.14), client has not booked, contract not yet sent',
+        subject: 'Re: {{brand_name}} — {{event_date}}',
+        body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had any questions about anything we talked about. If you're ready to move forward, I can get the contract over to you and we'll get everything locked in. No rush at all!`,
+        signOff: 'Thanks,\nAdrian',
+        aiNotes: 'Fires on same thread as recap (4.14). No duplicate warm opener (recap already did that). Last automated touch post consultation.'
       },
-      B: {
-        label: "Contract sent",
-        body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had any questions about anything we talked about. Did you have a chance to look over the contract?
-
-No rush at all! Let me know if there's anything I can help with.
-
-Thanks,
-Adrian`,
-      },
-    },
-    body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had any questions about anything we talked about. If you're ready to lock in the date, I can get the contract over to you.
-
-No rush at all! Let me know if there's anything I can help with.
-
-Thanks,
-Adrian`,
+      {
+        id: '4.15b',
+        label: 'Contract Already Sent',
+        trigger: '3 to 5 days after recap (4.14), contract was sent but not signed',
+        subject: 'Re: {{brand_name}} — {{event_date}}',
+        body: `Hi, {{partner_1_first}}! Just wanted to check in and see if you had a chance to look over the contract. Let me know if you have any questions or if there's anything else I can help with. No rush at all!`,
+        signOff: 'Thanks,\nAdrian',
+        aiNotes: 'Same thread. Contract callback variant. Collision rule: 4.8 and 4.15 never both fire for the same lead.'
+      }
+    ],
+    body: `Hi, {{partner_1_first}}! Just wanted to follow up and see if you had any questions about anything we talked about. If you're ready to move forward, I can get the contract over to you and we'll get everything locked in. No rush at all!`,
+    signOff: "Thanks,\nAdrian",
     mergeFields: ["partner_1_first", "brand_name", "event_date"],
     aiSections: [],
     collisionRules: null,
+    aiNotes: 'Fires on same thread as recap (4.14). No duplicate warm opener (recap already did that). Last automated touch post consultation.',
     notes:
-      "Variant A: no contract sent. Variant B: contract sent. 3 to 5 days after recap.",
+      "Variant 4.15a: contract not sent. Variant 4.15b: contract sent. 3 to 5 days after recap.",
   },
 
   // 4.16 — Cold Planner Outreach

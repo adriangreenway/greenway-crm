@@ -20,41 +20,6 @@ const normalizeConsultationDate = (val) => {
   return val;
 };
 
-// Toast notification — fixed pill at bottom center
-const Toast = ({ message, visible, onDone }) => {
-  useEffect(() => {
-    if (visible) {
-      const t = setTimeout(onDone, 2500);
-      return () => clearTimeout(t);
-    }
-  }, [visible, onDone]);
-
-  if (!visible) return null;
-
-  return (
-    <div
-      style={{
-        position: "fixed",
-        bottom: 32,
-        left: "50%",
-        transform: "translateX(-50%)",
-        background: COLORS.black,
-        color: COLORS.white,
-        padding: "10px 24px",
-        borderRadius: RADII.pill,
-        fontSize: 13,
-        fontWeight: 600,
-        fontFamily: FONTS.body,
-        zIndex: 200,
-        animation: "fadeIn 0.2s ease",
-        whiteSpace: "nowrap",
-      }}
-    >
-      {message}
-    </div>
-  );
-};
-
 // Stage sort priority
 const STAGE_ORDER = PIPELINE_STAGES.reduce((acc, s, i) => {
   acc[s] = i;
@@ -702,7 +667,6 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
   const [sourceFilter, setSourceFilter] = useState("All");
   const [selectedLead, setSelectedLead] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
   const [emailDraftLead, setEmailDraftLead] = useState(null);
   const [cheatSheetLead, setCheatSheetLead] = useState(null);
   const [gigSheetLead, setGigSheetLead] = useState(null);
@@ -1004,12 +968,6 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
           onClose={() => setIsAddingNew(false)}
         />
       )}
-
-      <Toast
-        message="Email drafter coming in Week 2"
-        visible={toastVisible}
-        onDone={() => setToastVisible(false)}
-      />
 
       {/* Email Drafter Modal */}
       {emailDraftLead && (
