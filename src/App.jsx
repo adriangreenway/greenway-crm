@@ -347,6 +347,11 @@ export default function App() {
               clearPendingLead={() => setPendingLeadId(null)}
               pendingAction={pendingAction}
               clearPendingAction={() => setPendingAction(null)}
+              onNavigateToSettings={() => handleNavChange("settings")}
+              musicians={data.musicians}
+              gigAssignments={data.gigAssignments}
+              addGigAssignment={data.addGigAssignment}
+              removeGigAssignment={data.removeGigAssignment}
             />
           )}
           {activeNav === "calendar" && (
@@ -356,7 +361,15 @@ export default function App() {
             />
           )}
           {activeNav === "bandops" && (
-            <BandOps musicians={data.musicians} />
+            <BandOps
+              musicians={data.musicians}
+              leads={data.leads}
+              gigAssignments={data.gigAssignments}
+              updateLead={data.updateLead}
+              addGigAssignment={data.addGigAssignment}
+              removeGigAssignment={data.removeGigAssignment}
+              onNavigateToSettings={() => handleNavChange("settings")}
+            />
           )}
           {activeNav === "content" && <Content />}
           {activeNav === "aicrew" && <AiCrew />}

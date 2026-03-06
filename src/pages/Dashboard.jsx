@@ -3,6 +3,7 @@ import { COLORS, FONTS, RADII } from "../tokens";
 import Icon from "../icons";
 import StatCard from "../components/StatCard";
 import Badge, { BrandBadge, StageBadge } from "../components/Badge";
+import ClaudeClues from "../components/ClaudeClues";
 import { STAGE_COLORS } from "../tokens";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 
@@ -445,47 +446,8 @@ const Dashboard = ({ leads, musicians, onNavigate, onOpenLead, onAddLead }) => {
             <CalendarMini leads={leads} />
           </div>
 
-          {/* Claude Clues placeholder */}
-          <div
-            style={{
-              background: COLORS.bg,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: RADII.lg,
-              padding: 20,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                marginBottom: 12,
-              }}
-            >
-              <Icon type="spark" size={16} color={COLORS.black} />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: COLORS.black,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Claude Clues
-              </span>
-            </div>
-            <p
-              style={{
-                fontSize: 13,
-                color: COLORS.textMuted,
-                lineHeight: 1.7,
-                margin: 0,
-              }}
-            >
-              AI pipeline insights will appear here. Coming in Week 2.
-            </p>
-          </div>
+          {/* Claude Clues */}
+          <ClaudeClues leads={leads} onOpenLead={onOpenLead} />
         </div>
       </div>
     </div>

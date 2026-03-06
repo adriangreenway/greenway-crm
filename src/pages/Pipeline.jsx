@@ -4,6 +4,10 @@ import Icon from "../icons";
 import { BrandBadge, StageBadge } from "../components/Badge";
 import SlideOverPanel from "../components/SlideOverPanel";
 import EmptyState from "../components/EmptyState";
+import EmailDrafterModal from "../components/EmailDrafterModal";
+import ConsultationCheatSheet from "../components/ConsultationCheatSheet";
+import GigSheetPanel from "../components/GigSheetPanel";
+import MCCueSheet from "../components/MCCueSheet";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 
@@ -202,7 +206,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -561,6 +565,78 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose }) => {
         />
       </FormField>
 
+      {/* Prep for Call — only when Consultation Scheduled */}
+      {!isNew && form.stage === "Consultation Scheduled" && onPrepForCall && (
+        <button
+          onClick={() => onPrepForCall(lead)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            width: "100%",
+            padding: "11px 20px",
+            background: COLORS.purpleLight,
+            color: COLORS.purple,
+            border: `1px solid ${COLORS.purple}`,
+            borderRadius: RADII.md,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: FONTS.body,
+            marginBottom: 4,
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = COLORS.purple;
+            e.currentTarget.style.color = COLORS.white;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = COLORS.purpleLight;
+            e.currentTarget.style.color = COLORS.purple;
+          }}
+        >
+          <Icon type="phone" size={14} color="currentColor" />
+          Prep for Call
+        </button>
+      )}
+
+      {/* Generate Gig Sheet — only when Booked */}
+      {!isNew && form.stage === "Booked" && onGenerateGigSheet && (
+        <button
+          onClick={() => onGenerateGigSheet(lead)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            width: "100%",
+            padding: "11px 20px",
+            background: COLORS.greenBg,
+            color: COLORS.green,
+            border: `1px solid ${COLORS.green}`,
+            borderRadius: RADII.md,
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: "pointer",
+            fontFamily: FONTS.body,
+            marginBottom: 4,
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = COLORS.green;
+            e.currentTarget.style.color = COLORS.white;
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = COLORS.greenBg;
+            e.currentTarget.style.color = COLORS.green;
+          }}
+        >
+          <Icon type="file" size={14} color="currentColor" />
+          Generate Gig Sheet
+        </button>
+      )}
+
       {/* Actions */}
       <div
         style={{
@@ -619,7 +695,7 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose }) => {
   );
 };
 
-const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction }) => {
+const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment }) => {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [brandFilter, setBrandFilter] = useState("All");
@@ -627,6 +703,10 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
   const [selectedLead, setSelectedLead] = useState(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
   const [toastVisible, setToastVisible] = useState(false);
+  const [emailDraftLead, setEmailDraftLead] = useState(null);
+  const [cheatSheetLead, setCheatSheetLead] = useState(null);
+  const [gigSheetLead, setGigSheetLead] = useState(null);
+  const [cueSheetLead, setCueSheetLead] = useState(null);
 
   // Open a lead from external navigation (e.g., Dashboard click)
   useEffect(() => {
@@ -889,7 +969,7 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
             <LeadRow
               key={lead.id}
               lead={lead}
-              onDraft={() => setToastVisible(true)}
+              onDraft={(l) => setEmailDraftLead(l)}
               onView={(l) => setSelectedLead(l)}
             />
           ))
@@ -904,6 +984,14 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
           onSave={handleSaveEdit}
           onDelete={handleDelete}
           onClose={() => setSelectedLead(null)}
+          onPrepForCall={(l) => {
+            setSelectedLead(null);
+            setCheatSheetLead(l);
+          }}
+          onGenerateGigSheet={(l) => {
+            setSelectedLead(null);
+            setGigSheetLead(l);
+          }}
         />
       )}
 
@@ -922,6 +1010,52 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
         visible={toastVisible}
         onDone={() => setToastVisible(false)}
       />
+
+      {/* Email Drafter Modal */}
+      {emailDraftLead && (
+        <EmailDrafterModal
+          lead={emailDraftLead}
+          onClose={() => setEmailDraftLead(null)}
+          onNavigateToSettings={onNavigateToSettings}
+        />
+      )}
+
+      {/* Consultation Cheat Sheet */}
+      {cheatSheetLead && (
+        <ConsultationCheatSheet
+          lead={cheatSheetLead}
+          onClose={() => setCheatSheetLead(null)}
+          onUpdateLead={updateLead}
+          onNavigateToSettings={onNavigateToSettings}
+        />
+      )}
+
+      {/* Gig Sheet Panel */}
+      {gigSheetLead && (
+        <GigSheetPanel
+          lead={gigSheetLead}
+          onClose={() => setGigSheetLead(null)}
+          onUpdateLead={updateLead}
+          musicians={musicians || []}
+          gigAssignments={gigAssignments || []}
+          addGigAssignment={addGigAssignment}
+          removeGigAssignment={removeGigAssignment}
+          onNavigateToSettings={onNavigateToSettings}
+          onOpenCueSheet={(l) => {
+            setGigSheetLead(null);
+            setCueSheetLead(l);
+          }}
+        />
+      )}
+
+      {/* MC Cue Sheet */}
+      {cueSheetLead && (
+        <MCCueSheet
+          lead={cueSheetLead}
+          onClose={() => setCueSheetLead(null)}
+          onUpdateLead={updateLead}
+        />
+      )}
     </div>
   );
 };

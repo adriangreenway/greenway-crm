@@ -104,10 +104,13 @@ const InfoField = ({ label, value }) => (
 );
 
 const Settings = () => {
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = useState(
+    () => localStorage.getItem("claude_api_key") || ""
+  );
   const [saved, setSaved] = useState(false);
 
   const handleSave = () => {
+    localStorage.setItem("claude_api_key", apiKey);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };

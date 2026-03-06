@@ -6,6 +6,7 @@ export default function useData() {
   const [leads, setLeads] = useState([]);
   const [musicians, setMusicians] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [gigAssignments, setGigAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -25,19 +26,22 @@ export default function useData() {
 
   const loadFromSupabase = async () => {
     try {
-      const [leadsRes, musiciansRes, contactsRes] = await Promise.all([
+      const [leadsRes, musiciansRes, contactsRes, gigAssignRes] = await Promise.all([
         supabase.from("leads").select("*").order("created_at", { ascending: false }),
         supabase.from("musicians").select("*").order("name"),
         supabase.from("contacts").select("*").order("name"),
+        supabase.from("gig_assignments").select("*"),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
       if (musiciansRes.error) throw musiciansRes.error;
       if (contactsRes.error) throw contactsRes.error;
+      if (gigAssignRes.error) throw gigAssignRes.error;
 
       setLeads(leadsRes.data || []);
       setMusicians(musiciansRes.data || []);
       setContacts(contactsRes.data || []);
+      setGigAssignments(gigAssignRes.data || []);
     } catch (err) {
       console.warn("Supabase load failed, falling back to seed data:", err.message);
       setLeads(seedLeads);
@@ -188,10 +192,53 @@ export default function useData() {
     []
   );
 
+  // ── Gig Assignment operations ──
+  const getAssignmentsForLead = useCallback(
+    (leadId) => gigAssignments.filter((a) => a.lead_id === leadId),
+    [gigAssignments]
+  );
+
+  const addGigAssignment = useCallback(
+    async (assignment) => {
+      if (supabaseConfigured) {
+        const { data, error } = await supabase
+          .from("gig_assignments")
+          .insert(assignment)
+          .select()
+          .single();
+        if (error) throw error;
+        setGigAssignments((prev) => [...prev, data]);
+        return data;
+      } else {
+        const newAssignment = { ...assignment, id: "ga-" + Date.now() };
+        setGigAssignments((prev) => [...prev, newAssignment]);
+        return newAssignment;
+      }
+    },
+    []
+  );
+
+  const removeGigAssignment = useCallback(
+    async (id) => {
+      if (supabaseConfigured) {
+        const { error } = await supabase
+          .from("gig_assignments")
+          .delete()
+          .eq("id", id);
+        if (error) throw error;
+        setGigAssignments((prev) => prev.filter((a) => a.id !== id));
+      } else {
+        setGigAssignments((prev) => prev.filter((a) => a.id !== id));
+      }
+    },
+    []
+  );
+
   return {
     leads,
     musicians,
     contacts,
+    gigAssignments,
     loading,
     error,
     addLead,
@@ -199,5 +246,8 @@ export default function useData() {
     deleteLead,
     addMusician,
     updateMusician,
+    getAssignmentsForLead,
+    addGigAssignment,
+    removeGigAssignment,
   };
 }
