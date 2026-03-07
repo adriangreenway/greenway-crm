@@ -8,6 +8,7 @@ import EmailDrafterModal from "../components/EmailDrafterModal";
 import ConsultationCheatSheet from "../components/ConsultationCheatSheet";
 import GigSheetPanel from "../components/GigSheetPanel";
 import MCCueSheet from "../components/MCCueSheet";
+import ProposalConfigPanel from "../components/ProposalConfigPanel";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 
@@ -171,7 +172,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -208,6 +209,7 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   );
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [inquiryExpanded, setInquiryExpanded] = useState(false);
   const deleteTimerRef = useRef(null);
 
   useEffect(() => {
@@ -498,6 +500,138 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
         </FormField>
       </div>
 
+      {/* Proposal */}
+      {!isNew && (
+        <>
+          <div
+            style={{
+              height: 1,
+              background: COLORS.borderLight,
+              margin: "8px 0 16px",
+            }}
+          />
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: COLORS.textLight,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: 12,
+            }}
+          >
+            Proposal
+          </div>
+          {lead.proposal_slug ? (
+            <div style={{ marginBottom: 16 }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: COLORS.textMuted,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  marginBottom: 8,
+                }}
+              >
+                {`${window.location.origin}/proposal/${lead.proposal_slug}`}
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    const url = `${window.location.origin}/proposal/${lead.proposal_slug}`;
+                    await navigator.clipboard.writeText(url);
+                    const btn = e.currentTarget;
+                    btn.textContent = "Copied";
+                    setTimeout(() => { btn.textContent = "Copy Link"; }, 1500);
+                  }}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: COLORS.black,
+                    background: COLORS.white,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: RADII.sm,
+                    cursor: "pointer",
+                    fontFamily: FONTS.body,
+                    transition: "all 0.15s",
+                  }}
+                >
+                  Copy Link
+                </button>
+                <a
+                  href={`${window.location.origin}/proposal/${lead.proposal_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: COLORS.textMuted,
+                    textDecoration: "none",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = COLORS.black)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = COLORS.textMuted)}
+                >
+                  Open
+                </a>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenProposalConfig) onOpenProposalConfig(lead);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: COLORS.textMuted,
+                    cursor: "pointer",
+                    fontFamily: FONTS.body,
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = COLORS.black)}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = COLORS.textMuted)}
+                >
+                  Regenerate
+                </button>
+              </div>
+              {lead.proposal_generated_at && (
+                <div style={{ fontSize: 11, color: COLORS.textLight }}>
+                  Generated {formatDate(lead.proposal_generated_at)}
+                </div>
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenProposalConfig) onOpenProposalConfig(lead);
+              }}
+              style={{
+                width: "100%",
+                padding: "11px 20px",
+                background: COLORS.black,
+                color: COLORS.white,
+                border: "none",
+                borderRadius: RADII.sm,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                fontFamily: FONTS.body,
+                marginBottom: 16,
+                transition: "opacity 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+            >
+              Generate Proposal
+            </button>
+          )}
+        </>
+      )}
+
       {/* Planner */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <FormField label="Planner Name">
@@ -516,6 +650,145 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
           />
         </FormField>
       </div>
+
+      {/* Inquiry Details (collapsible, only for leads from lead router) */}
+      {!isNew && (lead.referral_source || lead.inquiry_details || lead.event_type) && (
+        <>
+          <div
+            style={{
+              height: 1,
+              background: COLORS.borderLight,
+              margin: "8px 0 16px",
+            }}
+          />
+          <button
+            onClick={() => setInquiryExpanded((prev) => !prev)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              width: "100%",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 0",
+              marginBottom: inquiryExpanded ? 12 : 8,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: COLORS.textLight,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              Inquiry Details
+            </span>
+            <span
+              style={{
+                display: "inline-flex",
+                transition: "transform 0.2s ease",
+                transform: inquiryExpanded ? "rotate(90deg)" : "rotate(0deg)",
+              }}
+            >
+              <Icon type="chevron" size={14} color={COLORS.textLight} />
+            </span>
+          </button>
+          {inquiryExpanded && (
+            <div style={{ marginBottom: 8 }}>
+              {lead.event_type && (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.textLight,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginBottom: 3,
+                    }}
+                  >
+                    Event Type
+                  </div>
+                  <div style={{ fontSize: 13, color: COLORS.text }}>{lead.event_type}</div>
+                </div>
+              )}
+              {lead.cocktail_interest && (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.textLight,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginBottom: 3,
+                    }}
+                  >
+                    Cocktail Interest
+                  </div>
+                  <div style={{ fontSize: 13, color: COLORS.text }}>{lead.cocktail_interest}</div>
+                </div>
+              )}
+              {lead.budget_stated && (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.textLight,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginBottom: 3,
+                    }}
+                  >
+                    Budget Stated
+                  </div>
+                  <div style={{ fontSize: 13, color: COLORS.text }}>{lead.budget_stated}</div>
+                </div>
+              )}
+              {lead.referral_source && (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.textLight,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginBottom: 3,
+                    }}
+                  >
+                    Referral Source
+                  </div>
+                  <div style={{ fontSize: 13, color: COLORS.text }}>{lead.referral_source}</div>
+                </div>
+              )}
+              {lead.inquiry_details && (
+                <div style={{ marginBottom: 12 }}>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: COLORS.textLight,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                      marginBottom: 3,
+                    }}
+                  >
+                    Inquiry Details
+                  </div>
+                  <div style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.5 }}>
+                    {lead.inquiry_details}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Notes */}
       <FormField label="Notes">
@@ -660,7 +933,7 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   );
 };
 
-const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment }) => {
+const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment }) => {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [brandFilter, setBrandFilter] = useState("All");
@@ -671,6 +944,7 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
   const [cheatSheetLead, setCheatSheetLead] = useState(null);
   const [gigSheetLead, setGigSheetLead] = useState(null);
   const [cueSheetLead, setCueSheetLead] = useState(null);
+  const [proposalConfigLead, setProposalConfigLead] = useState(null);
 
   // Open a lead from external navigation (e.g., Dashboard click)
   useEffect(() => {
@@ -956,6 +1230,10 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
             setSelectedLead(null);
             setGigSheetLead(l);
           }}
+          onOpenProposalConfig={(l) => {
+            setSelectedLead(null);
+            setProposalConfigLead(l);
+          }}
         />
       )}
 
@@ -1011,6 +1289,16 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, pendingLeadId, clear
         <MCCueSheet
           lead={cueSheetLead}
           onClose={() => setCueSheetLead(null)}
+          onUpdateLead={updateLead}
+        />
+      )}
+
+      {/* Proposal Config Panel */}
+      {proposalConfigLead && (
+        <ProposalConfigPanel
+          lead={proposalConfigLead}
+          onClose={() => setProposalConfigLead(null)}
+          onGenerate={generateProposal}
           onUpdateLead={updateLead}
         />
       )}

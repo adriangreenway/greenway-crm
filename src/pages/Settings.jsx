@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { COLORS, FONTS, RADII } from "../tokens";
 import Icon from "../icons";
 import { useCalendarSync } from "../hooks/useCalendarSync";
+import { supabase, supabaseConfigured } from "../hooks/useAuth";
 
 // Integration card
 const IntegrationCard = ({ icon, title, description, children, below }) => (
@@ -148,8 +149,28 @@ const Settings = () => {
   const [gcalDisconnecting, setGcalDisconnecting] = useState(false);
   const [showGcalConfirm, setShowGcalConfirm] = useState(false);
 
+  // Lead Router state
+  const [leadRouterCount, setLeadRouterCount] = useState(null);
+
   // Toast
   const [toast, setToast] = useState(null);
+
+  // Check Lead Router monthly count on mount
+  useEffect(() => {
+    if (supabaseConfigured) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("source", "Website")
+        .gte("created_at", startOfMonth)
+        .then(({ count }) => {
+          setLeadRouterCount(count ?? 0);
+        })
+        .catch(() => setLeadRouterCount(0));
+    }
+  }, []);
 
   // Check Twilio status on mount
   useEffect(() => {
@@ -295,6 +316,25 @@ const Settings = () => {
             </button>
           </IntegrationCard>
 
+          {/* Website Lead Router */}
+          <IntegrationCard
+            icon="globe"
+            title="Website Lead Router"
+            description="Automatic lead capture from greenwayband.com"
+            below={
+              supabaseConfigured ? (
+                <span style={{ fontSize: 11, color: COLORS.textLight }}>
+                  {leadRouterCount !== null ? `${leadRouterCount} lead${leadRouterCount === 1 ? "" : "s"} captured this month` : "Loading..."}
+                </span>
+              ) : null
+            }
+          >
+            <StatusBadge
+              connected={supabaseConfigured}
+              label={supabaseConfigured ? "Active" : "Not Configured"}
+            />
+          </IntegrationCard>
+
           {/* Twilio SMS */}
           <IntegrationCard
             icon="phone"
@@ -401,15 +441,6 @@ const Settings = () => {
             <ConnectButton />
           </IntegrationCard>
 
-          {/* Netlify Forms */}
-          <IntegrationCard
-            icon="globe"
-            title="Netlify Forms"
-            description="Auto populate leads from greenwayband.com/book."
-          >
-            <NotConnectedBadge />
-            <ConnectButton />
-          </IntegrationCard>
         </div>
       </div>
 

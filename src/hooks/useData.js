@@ -240,6 +240,38 @@ export default function useData() {
     []
   );
 
+  // ── Proposal operations ──
+  const generateProposal = useCallback(
+    async (leadId, configOverride = null) => {
+      if (!supabaseConfigured) {
+        console.warn("generateProposal: Supabase not configured");
+        return null;
+      }
+      const slug = crypto.randomUUID();
+      const updates = {
+        proposal_slug: slug,
+        proposal_generated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      if (configOverride) {
+        updates.proposal_config_override = configOverride;
+      }
+      const { data, error } = await supabase
+        .from("leads")
+        .update(updates)
+        .eq("id", leadId)
+        .select()
+        .single();
+      if (error) throw error;
+      setLeads((prev) =>
+        prev.map((l) => (l.id === data.id ? data : l))
+      );
+      const url = `${window.location.origin}/proposal/${slug}`;
+      return { slug, url, lead: data };
+    },
+    []
+  );
+
   // ── Musician operations ──
   const addMusician = useCallback(
     async (musician) => {
@@ -716,6 +748,7 @@ export default function useData() {
     addLead,
     updateLead,
     deleteLead,
+    generateProposal,
     addMusician,
     updateMusician,
     getAssignmentsForLead,

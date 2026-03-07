@@ -12,6 +12,7 @@ import Content from "./pages/Content";
 import AiCrew from "./pages/AiCrew";
 import Settings from "./pages/Settings";
 import MediaVaultPublic from "./components/MediaVaultPublic";
+import ProposalPublic from "./pages/ProposalPublic";
 
 // Login screen
 const LoginScreen = ({ onSignIn }) => {
@@ -201,6 +202,12 @@ export default function App() {
     return <MediaVaultPublic slug={vaultMatch[1]} />;
   }
 
+  // Public proposal route — renders independently, no auth
+  const proposalMatch = path.match(/\/proposal\/(.+?)(?:\/)?$/);
+  if (proposalMatch) {
+    return <ProposalPublic slug={proposalMatch[1]} />;
+  }
+
   const {
     authenticated,
     loading: authLoading,
@@ -352,6 +359,7 @@ export default function App() {
               addLead={data.addLead}
               updateLead={data.updateLead}
               deleteLead={data.deleteLead}
+              generateProposal={data.generateProposal}
               pendingLeadId={pendingLeadId}
               clearPendingLead={() => setPendingLeadId(null)}
               pendingAction={pendingAction}
