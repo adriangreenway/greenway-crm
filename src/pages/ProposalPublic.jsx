@@ -1,68 +1,63 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Instrument breakdowns (from spec Section 10) ──
-const INSTRUMENTS = {
-  6: [
-    "Lead Vocals",
-    "Keys / Music Director",
-    "Guitar",
-    "Bass",
-    "Drums",
-    "Tracks / Production",
+// ── Band configurations: grouped roles with counts (matching Blick PDF / locked template) ──
+const BAND_CONFIGS = {
+  '6pc': [
+    { role: 'Lead Vocals', count: 1 },
+    { role: 'Keys', count: 1 },
+    { role: 'Guitar', count: 1 },
+    { role: 'Bass', count: 1 },
+    { role: 'Drums', count: 1 },
+    { role: 'Tracks / Production', count: 1 },
   ],
-  8: [
-    "Lead Vocals",
-    "Keys / Music Director",
-    "Guitar",
-    "Bass",
-    "Drums",
-    "Tracks / Production",
-    "Saxophone",
-    "Additional Vocalist",
+  '8pc': [
+    { role: 'Male Vocals', count: 1 },
+    { role: 'Female Vocals', count: 1 },
+    { role: 'Keys', count: 1 },
+    { role: 'Guitar', count: 1 },
+    { role: 'Bass', count: 1 },
+    { role: 'Drums', count: 1 },
+    { role: 'Saxophone', count: 1 },
+    { role: 'Tracks / Production', count: 1 },
   ],
-  10: [
-    "Lead Vocals",
-    "Keys / Music Director",
-    "Guitar",
-    "Bass",
-    "Drums",
-    "Tracks / Production",
-    "Saxophone",
-    "Additional Vocalist",
-    "Trumpet",
-    "Trombone",
+  '10pc': [
+    { role: 'Male Vocals', count: 1 },
+    { role: 'Female Vocals', count: 2 },
+    { role: 'Keys', count: 1 },
+    { role: 'Guitar', count: 1 },
+    { role: 'Bass', count: 1 },
+    { role: 'Drums', count: 1 },
+    { role: 'Horns', count: 3 },
   ],
-  12: [
-    "Lead Vocals",
-    "Keys / Music Director",
-    "Guitar",
-    "Bass",
-    "Drums",
-    "Tracks / Production",
-    "Saxophone",
-    "Additional Vocalist",
-    "Trumpet",
-    "Trombone",
-    "Second Guitar",
-    "Percussion",
+  '12pc': [
+    { role: 'Male Vocals', count: 1 },
+    { role: 'Female Vocals', count: 2 },
+    { role: 'Keys', count: 1 },
+    { role: 'Guitar', count: 2 },
+    { role: 'Bass', count: 1 },
+    { role: 'Drums', count: 1 },
+    { role: 'Percussion', count: 1 },
+    { role: 'Horns', count: 3 },
   ],
-  14: [
-    "Lead Vocals",
-    "Keys / Music Director",
-    "Guitar",
-    "Bass",
-    "Drums",
-    "Tracks / Production",
-    "Saxophone",
-    "Additional Vocalist",
-    "Trumpet",
-    "Trombone",
-    "Second Guitar",
-    "Percussion",
-    "Third Vocalist",
-    "Additional Horn",
+  '14pc': [
+    { role: 'Male Vocals', count: 2 },
+    { role: 'Female Vocals', count: 2 },
+    { role: 'Keys', count: 1 },
+    { role: 'Guitar', count: 1 },
+    { role: 'Bass', count: 1 },
+    { role: 'Drums', count: 1 },
+    { role: 'Percussion', count: 1 },
+    { role: 'Horns', count: 5 },
   ],
 };
+
+const INCLUDED_SERVICES = [
+  "Sound Equipment and Engineer",
+  "Lighting Equipment and Engineer",
+  "Emcee Services",
+  "Personalized First Dances",
+  "Song Requests",
+];
 
 // ── Helpers ──
 const formatDateLong = (dateStr) => {
@@ -84,10 +79,10 @@ const formatPrice = (price) => {
   return `$${Number(price).toLocaleString()}`;
 };
 
-const getPieceCount = (config) => {
-  if (!config) return 10;
+const getConfigKey = (config) => {
+  if (!config) return '10pc';
   const num = parseInt(String(config).replace(/\D/g, ""), 10);
-  return [6, 8, 10, 12, 14].includes(num) ? num : 10;
+  return [6, 8, 10, 12, 14].includes(num) ? `${num}pc` : '10pc';
 };
 
 const getPackageName = (config, override) => {
@@ -149,9 +144,32 @@ const PROPOSAL_CSS = `
     50% { opacity: 0.15; }
   }
 
+  /* Dual package layout */
+  .gw-proposal .gw-package-dual {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    gap: 0;
+    align-items: start;
+  }
+  .gw-proposal .gw-package-dual .gw-package-divider {
+    background: var(--border-light);
+    align-self: stretch;
+    margin: 0 32px;
+  }
+
   /* Responsive */
+  @media (max-width: 768px) {
+    .gw-proposal .gw-package-dual {
+      grid-template-columns: 1fr;
+    }
+    .gw-proposal .gw-package-dual .gw-package-divider {
+      height: 1px;
+      width: 100%;
+      margin: 48px 0;
+    }
+  }
   @media (max-width: 600px) {
-    .gw-proposal .gw-instrument-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .gw-package-inner { grid-template-columns: 1fr !important; }
     .gw-proposal .gw-details-grid { grid-template-columns: 1fr !important; }
     .gw-proposal .gw-detail-cell { border-right: none !important; }
     .gw-proposal .gw-cover-names { font-size: 24px !important; }
@@ -249,6 +267,172 @@ const SectionLabel = ({ children, className }) => (
     {children}
   </div>
 );
+
+// ── Reusable Package Content (used in single and dual layouts) ──
+const PackageContent = ({ name, configKey, receptionStart, receptionEnd, price, className }) => {
+  const musicians = BAND_CONFIGS[configKey] || BAND_CONFIGS['10pc'];
+
+  return (
+    <div className={className}>
+      {/* Package title */}
+      <div
+        className="gw-package-title"
+        style={{
+          fontFamily: "'Bodoni Moda', serif",
+          fontSize: "clamp(24px, 5vw, 28px)",
+          color: "var(--cream)",
+          fontWeight: 400,
+          marginBottom: 6,
+        }}
+      >
+        {name}
+      </div>
+      <div
+        style={{
+          fontSize: 11,
+          color: "var(--cream-dim)",
+          letterSpacing: "2px",
+          textTransform: "uppercase",
+          marginBottom: 48,
+        }}
+      >
+        Full reception entertainment + MC services
+      </div>
+
+      {/* Two-column inner grid: Musicians | Services + Performance Window */}
+      <div
+        className="gw-package-inner"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 48,
+        }}
+      >
+        {/* Left column: Musicians */}
+        <div>
+          <div
+            style={{
+              fontSize: 9,
+              letterSpacing: "4px",
+              textTransform: "uppercase",
+              color: "var(--cream-faint)",
+              marginBottom: 20,
+            }}
+          >
+            Musicians
+          </div>
+          {musicians.map((m) => (
+            <div
+              key={m.role}
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "baseline",
+                fontSize: 13,
+                color: "var(--cream)",
+                padding: "10px 0",
+                borderBottom: "0.5px solid var(--border)",
+                fontWeight: 300,
+              }}
+            >
+              <span>{m.role}</span>
+              <span>{m.count}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Right column: Services + Performance Window */}
+        <div>
+          <div
+            style={{
+              fontSize: 9,
+              letterSpacing: "4px",
+              textTransform: "uppercase",
+              color: "var(--cream-faint)",
+              marginBottom: 20,
+            }}
+          >
+            Included Services
+          </div>
+          {INCLUDED_SERVICES.map((s) => (
+            <div
+              key={s}
+              style={{
+                fontSize: 13,
+                color: "var(--cream-muted)",
+                padding: "10px 0",
+                borderBottom: "0.5px solid var(--border)",
+                fontWeight: 300,
+              }}
+            >
+              {s}
+            </div>
+          ))}
+
+          {/* Performance Window */}
+          <div style={{ marginTop: 28 }}>
+            <div
+              style={{
+                fontSize: 9,
+                letterSpacing: "4px",
+                textTransform: "uppercase",
+                color: "var(--cream-faint)",
+                marginBottom: 20,
+              }}
+            >
+              Performance Window
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--cream-muted)",
+                padding: "10px 0",
+                borderBottom: "0.5px solid var(--border)",
+                fontWeight: 300,
+              }}
+            >
+              Reception: {receptionStart} to {receptionEnd}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Optional price (used in dual layout, Phase 3) */}
+      {price && (
+        <div
+          style={{
+            marginTop: 48,
+            paddingTop: 28,
+            borderTop: "0.5px solid var(--border-med)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 9,
+              letterSpacing: "4px",
+              textTransform: "uppercase",
+              color: "var(--cream-faint)",
+              marginBottom: 12,
+            }}
+          >
+            Investment
+          </div>
+          <div
+            className="gw-price-amount"
+            style={{
+              fontFamily: "'Bodoni Moda', serif",
+              fontSize: "clamp(28px, 7vw, 36px)",
+              color: "var(--cream)",
+              fontWeight: 400,
+            }}
+          >
+            {price}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── ProposalPublic ──
 const ProposalPublic = ({ slug }) => {
@@ -473,9 +657,15 @@ const ProposalPublic = ({ slug }) => {
   const dateLong = formatDateLong(p.event_date);
   const venue = p.venue || "";
   const packageName = getPackageName(p.config, co);
-  const pieceCount = getPieceCount(co?.package_name || p.config);
-  const instruments = INSTRUMENTS[pieceCount] || INSTRUMENTS[10];
+  const configKey = getConfigKey(co?.package_name || p.config);
   const price = formatPrice(p.price);
+
+  // Dual package support (new schema)
+  const hasUpsell = !!co.upsell_package;
+  const upsellName = co.upsell_package?.name || "";
+  const upsellConfigKey = co.upsell_package?.config ? getConfigKey(co.upsell_package.config) : "10pc";
+  const upsellPrice = co.upsell_package?.price ? formatPrice(co.upsell_package.price) : "";
+  const primaryPrice = co.primary_package?.price ? formatPrice(co.primary_package.price) : price;
   const hasCocktail = !!(co.cocktail_start && co.cocktail_end);
   const cocktailStart = co.cocktail_start || "";
   const cocktailEnd = co.cocktail_end || "";
@@ -716,119 +906,46 @@ const ProposalPublic = ({ slug }) => {
       {/* SECTION 3: YOUR BAND (Package)          */}
       {/* ════════════════════════════════════════ */}
       <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
+        <div
+          className="gw-section-content"
+          style={{
+            maxWidth: hasUpsell ? 900 : 640,
+            margin: "0 auto",
+            padding: "0 32px",
+          }}
+        >
           <SectionLabel className="reveal">Your band</SectionLabel>
-          <div
-            className="reveal reveal-delay-1 gw-package-title"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(24px, 5vw, 28px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              marginBottom: 6,
-            }}
-          >
-            {packageName}
-          </div>
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              fontSize: 11,
-              color: "var(--cream-dim)",
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              marginBottom: 48,
-            }}
-          >
-            Full reception entertainment + MC services
-          </div>
 
-          {/* Instrument grid */}
-          <div
-            className="reveal reveal-delay-2 gw-instrument-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 48,
-            }}
-          >
-            {instruments.map((name) => (
-              <div
-                key={name}
-                style={{
-                  border: "1px solid var(--border-light)",
-                  borderRadius: 8,
-                  padding: "16px 20px",
-                }}
-              >
-                <div style={{ fontSize: 13, color: "var(--cream)" }}>{name}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Services */}
-          <div className="reveal reveal-delay-3">
-            <div
-              style={{
-                fontSize: 9,
-                letterSpacing: "4px",
-                textTransform: "uppercase",
-                color: "var(--cream-faint)",
-                marginBottom: 20,
-              }}
-            >
-              Included Services
+          {hasUpsell ? (
+            /* ── DUAL PACKAGE LAYOUT ── */
+            <div className="reveal reveal-delay-1 gw-package-dual">
+              <PackageContent
+                name={packageName}
+                configKey={configKey}
+                receptionStart={receptionStart}
+                receptionEnd={receptionEnd}
+                price={primaryPrice}
+              />
+              <div className="gw-package-divider" />
+              <PackageContent
+                name={upsellName}
+                configKey={upsellConfigKey}
+                receptionStart={receptionStart}
+                receptionEnd={receptionEnd}
+                price={upsellPrice}
+              />
             </div>
-            <ul style={{ listStyle: "none" }}>
-              {[
-                "Sound Equipment and Engineer",
-                "Lighting Equipment and Engineer",
-                "Emcee Services",
-                "Personalized First Dances",
-                "Song Requests",
-              ].map((s) => (
-                <li
-                  key={s}
-                  style={{
-                    fontSize: 13,
-                    color: "var(--cream-muted)",
-                    padding: "10px 0",
-                    borderBottom: "0.5px solid var(--border)",
-                    fontWeight: 300,
-                  }}
-                >
-                  {s}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Performance Window */}
-          <div className="reveal reveal-delay-3" style={{ marginTop: 28 }}>
-            <div
-              style={{
-                fontSize: 9,
-                letterSpacing: "4px",
-                textTransform: "uppercase",
-                color: "var(--cream-faint)",
-                marginBottom: 20,
-              }}
-            >
-              Performance Window
+          ) : (
+            /* ── SINGLE PACKAGE LAYOUT ── */
+            <div className="reveal reveal-delay-1">
+              <PackageContent
+                name={packageName}
+                configKey={configKey}
+                receptionStart={receptionStart}
+                receptionEnd={receptionEnd}
+              />
             </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--cream-muted)",
-                padding: "10px 0",
-                borderBottom: "0.5px solid var(--border)",
-                fontWeight: 300,
-              }}
-            >
-              Reception: {receptionStart} to {receptionEnd}
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -923,126 +1040,130 @@ const ProposalPublic = ({ slug }) => {
         </div>
       </section>
 
-      <Divider />
-
       {/* ════════════════════════════════════════ */}
-      {/* SECTION 5: INVESTMENT                   */}
+      {/* SECTION 5: INVESTMENT (single layout only) */}
+      {/* In dual layout, price is shown per package */}
       {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">Investment</SectionLabel>
+      {!hasUpsell && (
+        <>
+          <Divider />
+          <section style={{ padding: "80px 0" }}>
+            <div className="gw-section-content" style={contentStyle}>
+              <SectionLabel className="reveal">Investment</SectionLabel>
 
-          {/* Price row */}
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "baseline",
-              padding: "28px 0",
-              borderTop: "0.5px solid var(--border-med)",
-              borderBottom: "0.5px solid var(--border-med)",
-              marginBottom: 40,
-            }}
-          >
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: "3px",
-                textTransform: "uppercase",
-                color: "var(--cream-dim)",
-              }}
-            >
-              Total Investment
-            </div>
-            <div
-              className="gw-price-amount"
-              style={{
-                fontFamily: "'Bodoni Moda', serif",
-                fontSize: "clamp(28px, 7vw, 40px)",
-                color: "var(--cream)",
-                fontWeight: 400,
-              }}
-            >
-              {price}
-            </div>
-          </div>
-
-          {/* All inclusive */}
-          <div
-            className="reveal reveal-delay-2"
-            style={{
-              fontSize: 13,
-              color: "var(--cream-muted)",
-              marginBottom: 32,
-              fontWeight: 300,
-            }}
-          >
-            All inclusive
-          </div>
-
-          {/* Includes grid */}
-          <div
-            className="reveal reveal-delay-2 gw-includes-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-              marginBottom: 40,
-            }}
-          >
-            {[
-              "Full PA and sound system",
-              "Stage lighting package",
-              "MC and emcee services",
-              "Music during breaks and transitions",
-              "Setup and breakdown",
-              ...(hasCocktail ? ["Sound for cocktail hour"] : []),
-            ].map((item) => (
+              {/* Price row */}
               <div
-                key={item}
+                className="reveal reveal-delay-1"
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  padding: "28px 0",
+                  borderTop: "0.5px solid var(--border-med)",
+                  borderBottom: "0.5px solid var(--border-med)",
+                  marginBottom: 40,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: "3px",
+                    textTransform: "uppercase",
+                    color: "var(--cream-dim)",
+                  }}
+                >
+                  Total Investment
+                </div>
+                <div
+                  className="gw-price-amount"
+                  style={{
+                    fontFamily: "'Bodoni Moda', serif",
+                    fontSize: "clamp(28px, 7vw, 40px)",
+                    color: "var(--cream)",
+                    fontWeight: 400,
+                  }}
+                >
+                  {price}
+                </div>
+              </div>
+
+              {/* All inclusive */}
+              <div
+                className="reveal reveal-delay-2"
                 style={{
                   fontSize: 13,
                   color: "var(--cream-muted)",
-                  padding: "12px 0",
-                  borderBottom: "0.5px solid var(--border)",
+                  marginBottom: 32,
                   fontWeight: 300,
                 }}
               >
-                {item}
+                All inclusive
               </div>
-            ))}
-          </div>
 
-          {/* Payment terms */}
-          <div
-            className="reveal reveal-delay-3"
-            style={{
-              fontSize: 11,
-              color: "var(--cream-faint)",
-              lineHeight: 2,
-              fontWeight: 300,
-            }}
-          >
-            <p>50% deposit to reserve your date</p>
-            <p>Balance due 30 days before event</p>
-          </div>
+              {/* Includes grid */}
+              <div
+                className="reveal reveal-delay-2 gw-includes-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: 12,
+                  marginBottom: 40,
+                }}
+              >
+                {[
+                  "Full PA and sound system",
+                  "Stage lighting package",
+                  "MC and emcee services",
+                  "Music during breaks and transitions",
+                  "Setup and breakdown",
+                  ...(hasCocktail ? ["Sound for cocktail hour"] : []),
+                ].map((item) => (
+                  <div
+                    key={item}
+                    style={{
+                      fontSize: 13,
+                      color: "var(--cream-muted)",
+                      padding: "12px 0",
+                      borderBottom: "0.5px solid var(--border)",
+                      fontWeight: 300,
+                    }}
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
 
-          {/* Note */}
-          <div
-            className="reveal reveal-delay-4"
-            style={{
-              fontSize: 11,
-              color: "var(--cream-faint)",
-              lineHeight: 1.8,
-              marginTop: 28,
-              fontWeight: 300,
-            }}
-          >
-            Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
-          </div>
-        </div>
-      </section>
+              {/* Payment terms */}
+              <div
+                className="reveal reveal-delay-3"
+                style={{
+                  fontSize: 11,
+                  color: "var(--cream-faint)",
+                  lineHeight: 2,
+                  fontWeight: 300,
+                }}
+              >
+                <p>50% deposit to reserve your date</p>
+                <p>Balance due 30 days before event</p>
+              </div>
+
+              {/* Note */}
+              <div
+                className="reveal reveal-delay-4"
+                style={{
+                  fontSize: 11,
+                  color: "var(--cream-faint)",
+                  lineHeight: 1.8,
+                  marginTop: 28,
+                  fontWeight: 300,
+                }}
+              >
+                Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
+              </div>
+            </div>
+          </section>
+        </>
+      )}
 
       <Divider />
 

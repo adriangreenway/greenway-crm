@@ -57,7 +57,7 @@ function formatDateShort(dateStr: string): string {
 
 // CORS headers
 function corsHeaders(origin: string | null) {
-  const allowed = ["https://greenwayband.com", "https://www.greenwayband.com"];
+  const allowed = ["https://greenwayband.com", "https://www.greenwayband.com", "https://greenway-inquiries.netlify.app"];
   const allowedOrigin = origin && allowed.includes(origin) ? origin : allowed[0];
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
