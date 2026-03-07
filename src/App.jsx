@@ -397,7 +397,15 @@ export default function App() {
               deleteSocialPost={data.deleteSocialPost}
             />
           )}
-          {activeNav === "aicrew" && <AiCrew />}
+          {activeNav === "aicrew" && (
+            <AiCrew
+              getSmsSettings={data.getSmsSettings}
+              updateSmsSetting={data.updateSmsSetting}
+              getSmsMessages={data.getSmsMessages}
+              getLatestSmsMessage={data.getLatestSmsMessage}
+              createSmsMessage={data.createSmsMessage}
+            />
+          )}
           {activeNav === "settings" && <Settings />}
         </div>
       </div>

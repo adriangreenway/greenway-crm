@@ -6,3 +6,7 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Scheduled function for SMS briefings
+[functions."sms-briefing"]
+  schedule = "0 1,13,14,15 * * *"

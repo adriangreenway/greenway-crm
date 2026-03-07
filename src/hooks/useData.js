@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, supabaseConfigured } from "./useAuth";
 import { seedLeads, seedMusicians } from "../data/seed";
 import { seedGalleries, seedSocialPosts } from "../data/socialSeed";
@@ -12,6 +12,10 @@ export default function useData() {
   const [socialPosts, setSocialPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Ref for current leads (used by GCal push to compare old values)
+  const leadsRef = useRef(leads);
+  useEffect(() => { leadsRef.current = leads; }, [leads]);
 
   // ── Load data ──
   useEffect(() => {
@@ -93,6 +97,76 @@ export default function useData() {
       .subscribe();
   };
 
+  // ── Google Calendar push (fire-and-forget after lead save) ──
+  const gcalSyncAfterLeadSave = useCallback(async (savedLead, oldLead) => {
+    if (!supabaseConfigured) return;
+    try {
+      const { data: tokens } = await supabase
+        .from("calendar_tokens")
+        .select("is_connected")
+        .limit(1)
+        .single();
+      if (!tokens?.is_connected) return;
+
+      const dateFields = ["event_date", "consultation_date", "followup_date"];
+      const googleEventIds = {
+        ...(oldLead?.google_event_ids || {}),
+        ...(savedLead.google_event_ids || {}),
+      };
+      let hasChanges = false;
+
+      for (const field of dateFields) {
+        const newValue = savedLead[field] || null;
+        const oldValue = oldLead ? (oldLead[field] || null) : null;
+        const shouldPush = !oldLead ? !!newValue : newValue !== oldValue;
+        if (!shouldPush) continue;
+
+        try {
+          const res = await fetch("/.netlify/functions/gcal-sync-push", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              lead_id: savedLead.id,
+              field,
+              value: newValue,
+              old_google_event_id: googleEventIds[field] || null,
+              lead_summary: {
+                partner1_first: savedLead.partner1_first,
+                partner1_last: savedLead.partner1_last,
+                partner2_first: savedLead.partner2_first,
+                partner2_last: savedLead.partner2_last,
+                venue: savedLead.venue,
+                config: savedLead.config,
+                brand: savedLead.brand,
+              },
+            }),
+          });
+          const data = await res.json();
+          if (data.success && data.google_event_id !== undefined) {
+            googleEventIds[field] = data.google_event_id;
+            hasChanges = true;
+          }
+        } catch (pushErr) {
+          console.warn("Google Calendar push failed for", field, ":", pushErr.message);
+        }
+      }
+
+      if (hasChanges) {
+        await supabase
+          .from("leads")
+          .update({ google_event_ids: googleEventIds })
+          .eq("id", savedLead.id);
+        setLeads((prev) =>
+          prev.map((l) =>
+            l.id === savedLead.id ? { ...l, google_event_ids: googleEventIds } : l
+          )
+        );
+      }
+    } catch (err) {
+      console.warn("Google Calendar sync check failed:", err.message);
+    }
+  }, []);
+
   // ── Lead operations ──
   const addLead = useCallback(
     async (lead) => {
@@ -104,6 +178,8 @@ export default function useData() {
           .single();
         if (error) throw error;
         setLeads((prev) => [data, ...prev]);
+        // Async GCal push for any date fields set on create
+        gcalSyncAfterLeadSave(data, null);
         return data;
       } else {
         const newLead = {
@@ -122,6 +198,8 @@ export default function useData() {
   const updateLead = useCallback(
     async (id, updates) => {
       if (supabaseConfigured) {
+        // Capture old lead for GCal date comparison
+        const oldLead = leadsRef.current.find((l) => l.id === id) || null;
         const { data, error } = await supabase
           .from("leads")
           .update({ ...updates, updated_at: new Date().toISOString() })
@@ -132,6 +210,8 @@ export default function useData() {
         setLeads((prev) =>
           prev.map((l) => (l.id === data.id ? data : l))
         );
+        // Async GCal push for any changed date fields
+        gcalSyncAfterLeadSave(data, oldLead);
         return data;
       } else {
         setLeads((prev) =>
@@ -544,6 +624,86 @@ export default function useData() {
     setSocialPosts((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
+  // ── SMS Settings operations ──
+  const getSmsSettings = useCallback(async () => {
+    if (!supabaseConfigured) {
+      return [
+        { persona: "adrian_ai", is_active: true, last_sent_at: null, next_send_at: null },
+        { persona: "content_ai", is_active: true, last_sent_at: null, next_send_at: null },
+        { persona: "strategy_ai", is_active: true, last_sent_at: null, next_send_at: null },
+      ];
+    }
+    const { data, error } = await supabase
+      .from("sms_settings")
+      .select("*")
+      .order("persona");
+    if (error) throw error;
+    return data || [];
+  }, []);
+
+  const updateSmsSetting = useCallback(async (persona, updates) => {
+    if (!supabaseConfigured) return { persona, ...updates };
+    const { data, error } = await supabase
+      .from("sms_settings")
+      .update(updates)
+      .eq("persona", persona)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }, []);
+
+  // ── SMS Messages operations ──
+  const getSmsMessages = useCallback(async (persona, limit = 20, offset = 0) => {
+    if (!supabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from("sms_messages")
+      .select("*")
+      .eq("persona", persona)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (error) throw error;
+    return data || [];
+  }, []);
+
+  const getLatestSmsMessage = useCallback(async (persona) => {
+    if (!supabaseConfigured) return null;
+    const { data, error } = await supabase
+      .from("sms_messages")
+      .select("*")
+      .eq("persona", persona)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    if (error && error.code !== "PGRST116") throw error;
+    return data || null;
+  }, []);
+
+  const createSmsMessage = useCallback(async (message) => {
+    if (!supabaseConfigured) return null;
+    const { data, error } = await supabase
+      .from("sms_messages")
+      .insert(message)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }, []);
+
+  // ── Calendar Events External operations ──
+  const getExternalCalendarEvents = useCallback(async (startDate, endDate) => {
+    if (!supabaseConfigured) return [];
+    const { data, error } = await supabase
+      .from("calendar_events_external")
+      .select("*")
+      .gte("start_time", startDate)
+      .lte("start_time", endDate)
+      .eq("is_blocking", true)
+      .order("start_time");
+    if (error) throw error;
+    return data || [];
+  }, []);
+
   return {
     leads,
     musicians,
@@ -579,6 +739,14 @@ export default function useData() {
     createSocialPost,
     updateSocialPost,
     deleteSocialPost,
+    // SMS operations
+    getSmsSettings,
+    updateSmsSetting,
+    getSmsMessages,
+    getLatestSmsMessage,
+    createSmsMessage,
+    // Calendar operations
+    getExternalCalendarEvents,
   };
 }
 

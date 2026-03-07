@@ -1,9 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { COLORS, FONTS, RADII } from "../tokens";
 import Icon from "../icons";
 import { BrandBadge, StageBadge } from "../components/Badge";
 import SlideOverPanel from "../components/SlideOverPanel";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
+import { useCalendarSync } from "../hooks/useCalendarSync";
 
 // Month navigation arrows
 const NavArrow = ({ direction, onClick }) => (
@@ -29,7 +30,7 @@ const NavArrow = ({ direction, onClick }) => (
   </button>
 );
 
-// Event chip inside day cell
+// Event chip inside day cell (CC events)
 const EventChip = ({ event }) => {
   const { lead, type } = event;
   const isKirby = lead.brand === "Kirby Collective";
@@ -55,11 +56,50 @@ const EventChip = ({ event }) => {
   );
 };
 
+// Personal event chip (visually secondary)
+const PersonalChip = ({ event }) => {
+  const label = event.title
+    ? event.title.length > 15 ? event.title.slice(0, 15) + "..." : event.title
+    : "Personal";
+  return (
+    <div
+      style={{
+        padding: "1px 5px",
+        borderRadius: 3,
+        fontSize: 10,
+        fontWeight: 500,
+        lineHeight: "15px",
+        background: COLORS.bg,
+        color: COLORS.textLight,
+        border: `1px solid ${COLORS.borderLight}`,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        maxWidth: "100%",
+      }}
+    >
+      {label}
+    </div>
+  );
+};
+
 // Event type labels
 const TYPE_LABELS = { wedding: "Wedding", consultation: "Consultation", followup: "Follow Up" };
 
+// Format personal event time
+function formatPersonalTime(event) {
+  if (event.all_day) return "All day";
+  if (!event.start_time) return "";
+  try {
+    const d = new Date(event.start_time);
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  } catch {
+    return "";
+  }
+}
+
 // Day detail drawer — shows all events on a given date
-const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
+const DayDrawer = ({ date, events, personalEvents, onClose, onOpenLead }) => {
   const dateStr = date.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -67,6 +107,7 @@ const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
     year: "numeric",
   });
 
+  const totalCount = events.length + personalEvents.length;
   const weddingEvents = events.filter((e) => e.type === "wedding");
   const hasConflict =
     weddingEvents.length > 1 &&
@@ -78,9 +119,9 @@ const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
       open
       title={dateStr}
       subtitle={
-        events.length === 0
+        totalCount === 0
           ? "No events"
-          : `${events.length} event${events.length > 1 ? "s" : ""}`
+          : `${totalCount} event${totalCount > 1 ? "s" : ""}`
       }
       onClose={onClose}
     >
@@ -103,7 +144,8 @@ const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
         </div>
       )}
 
-      {events.length === 0 && (
+      {/* CC events */}
+      {events.length === 0 && personalEvents.length === 0 && (
         <div
           style={{
             textAlign: "center",
@@ -119,6 +161,19 @@ const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
             }}
           >
             No events on this date.
+          </p>
+        </div>
+      )}
+
+      {events.length === 0 && personalEvents.length > 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "24px 0 8px",
+          }}
+        >
+          <p style={{ fontSize: 13, color: COLORS.textLight }}>
+            No Greenway events
           </p>
         </div>
       )}
@@ -236,16 +291,61 @@ const DayDrawer = ({ date, events, onClose, onOpenLead }) => {
           </button>
         </div>
       ))}
+
+      {/* Personal Calendar section */}
+      {personalEvents.length > 0 && (
+        <>
+          <div
+            style={{
+              height: 1,
+              background: COLORS.borderLight,
+              margin: "16px 0 12px",
+            }}
+          />
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              color: COLORS.textLight,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: 12,
+            }}
+          >
+            Personal Calendar
+          </div>
+          {personalEvents.map((pe) => (
+            <div
+              key={pe.google_event_id || pe.title}
+              style={{
+                padding: "10px 14px",
+                marginBottom: 8,
+                borderRadius: RADII.sm,
+                border: `1px solid ${COLORS.borderLight}`,
+                background: COLORS.white,
+              }}
+            >
+              <div style={{ fontSize: 13, color: COLORS.textMuted, fontWeight: 500 }}>
+                {pe.title || "Personal event"}
+              </div>
+              <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 2 }}>
+                {formatPersonalTime(pe)}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
     </SlideOverPanel>
   );
 };
 
 // Single day cell in the calendar grid
-const DayCell = ({ day, events, isToday, onClick }) => {
+const DayCell = ({ day, events, personalEvents, isToday, onClick }) => {
   const weddingEvents = events.filter((e) => e.type === "wedding");
   const hasGreenway = weddingEvents.some((e) => e.lead.brand === "Greenway");
   const hasKirby = weddingEvents.some((e) => e.lead.brand === "Kirby Collective");
   const hasConflict = hasGreenway && hasKirby;
+  const hasPersonal = personalEvents.length > 0;
 
   return (
     <div
@@ -255,6 +355,9 @@ const DayCell = ({ day, events, isToday, onClick }) => {
         padding: 6,
         background: isToday ? "#FAFAF7" : COLORS.white,
         border: `1px solid ${isToday ? COLORS.black : COLORS.borderLight}`,
+        borderLeft: hasPersonal && !isToday
+          ? `2px solid ${COLORS.border}`
+          : `1px solid ${isToday ? COLORS.black : COLORS.borderLight}`,
         borderRadius: RADII.sm,
         cursor: "pointer",
         transition: "background 0.1s",
@@ -281,8 +384,8 @@ const DayCell = ({ day, events, isToday, onClick }) => {
         <span
           style={{
             fontSize: 12,
-            fontWeight: isToday || events.length > 0 ? 700 : 500,
-            color: isToday ? COLORS.black : events.length > 0 ? COLORS.black : COLORS.textMuted,
+            fontWeight: isToday || events.length > 0 || hasPersonal ? 700 : 500,
+            color: isToday ? COLORS.black : events.length > 0 || hasPersonal ? COLORS.black : COLORS.textMuted,
           }}
         >
           {day}
@@ -317,6 +420,22 @@ const DayCell = ({ day, events, isToday, onClick }) => {
             +{events.length - 2} more
           </span>
         )}
+        {/* Personal event chips — only show if room (max 1 visible) */}
+        {events.length <= 2 && personalEvents.slice(0, 1).map((pe) => (
+          <PersonalChip key={pe.google_event_id || pe.title} event={pe} />
+        ))}
+        {events.length <= 2 && personalEvents.length > 1 && (
+          <span
+            style={{
+              fontSize: 9,
+              color: COLORS.textLight,
+              fontWeight: 500,
+              paddingLeft: 2,
+            }}
+          >
+            +{personalEvents.length - 1} personal
+          </span>
+        )}
       </div>
     </div>
   );
@@ -327,8 +446,29 @@ const Calendar = ({ leads, onOpenLead }) => {
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedDate, setSelectedDate] = useState(null);
+  const [personalEvents, setPersonalEvents] = useState([]);
 
-  // Build event map for the displayed month (all 3 event types)
+  const { isConnected, pullEvents } = useCalendarSync();
+
+  // Pull personal events when month changes or on mount (if connected)
+  useEffect(() => {
+    if (!isConnected) {
+      setPersonalEvents([]);
+      return;
+    }
+
+    const monthStart = new Date(viewYear, viewMonth, 1).toISOString();
+    const monthEnd = new Date(viewYear, viewMonth + 1, 1).toISOString();
+
+    pullEvents(monthStart, monthEnd)
+      .then((events) => setPersonalEvents(events || []))
+      .catch((err) => {
+        console.warn("Calendar sync pull failed:", err);
+        setPersonalEvents([]);
+      });
+  }, [isConnected, viewYear, viewMonth, pullEvents]);
+
+  // Build CC event map for the displayed month
   const eventMap = useMemo(() => {
     const map = {};
     const addEntry = (dateStr, lead, type) => {
@@ -347,6 +487,21 @@ const Calendar = ({ leads, onOpenLead }) => {
     });
     return map;
   }, [leads, viewYear, viewMonth]);
+
+  // Build personal event map keyed by day number
+  const personalEventMap = useMemo(() => {
+    const map = {};
+    personalEvents.forEach((pe) => {
+      if (!pe.start_time) return;
+      const dateStr = pe.all_day ? pe.start_time : pe.start_time.split("T")[0];
+      const d = new Date(dateStr + (dateStr.includes("T") ? "" : "T00:00:00"));
+      if (d.getFullYear() !== viewYear || d.getMonth() !== viewMonth) return;
+      const day = d.getDate();
+      if (!map[day]) map[day] = [];
+      map[day].push(pe);
+    });
+    return map;
+  }, [personalEvents, viewYear, viewMonth]);
 
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
   const startOffset = new Date(viewYear, viewMonth, 1).getDay();
@@ -384,6 +539,7 @@ const Calendar = ({ leads, onOpenLead }) => {
 
   // Events for selected date drawer
   const selectedEvents = selectedDate ? eventMap[selectedDate.getDate()] || [] : [];
+  const selectedPersonalEvents = selectedDate ? personalEventMap[selectedDate.getDate()] || [] : [];
 
   // B8: Close drawer before navigating to pipeline
   const handleOpenLeadFromDrawer = (leadId) => {
@@ -586,11 +742,13 @@ const Calendar = ({ leads, onOpenLead }) => {
             const isToday =
               isCurrentMonth && day === today.getDate();
             const events = eventMap[day] || [];
+            const dayPersonal = personalEventMap[day] || [];
             return (
               <DayCell
                 key={day}
                 day={day}
                 events={events}
+                personalEvents={dayPersonal}
                 isToday={isToday}
                 onClick={() =>
                   setSelectedDate(new Date(viewYear, viewMonth, day))
@@ -606,6 +764,7 @@ const Calendar = ({ leads, onOpenLead }) => {
         <DayDrawer
           date={selectedDate}
           events={selectedEvents}
+          personalEvents={selectedPersonalEvents}
           onClose={() => setSelectedDate(null)}
           onOpenLead={handleOpenLeadFromDrawer}
         />
