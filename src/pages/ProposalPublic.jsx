@@ -59,6 +59,30 @@ const INCLUDED_SERVICES = [
   "Song Requests",
 ];
 
+const COCKTAIL_TIERS = [
+  { key: "solo", label: "Solo", desc: "One musician performing live during your cocktail hour", price: 1250 },
+  { key: "duo", label: "Duo", desc: "Two musicians for a richer, fuller cocktail hour sound", price: 1875 },
+  { key: "trio", label: "Trio", desc: "Three musicians delivering a complete cocktail hour experience", price: 2500 },
+];
+
+const TESTIMONIALS = [
+  {
+    quote: "From the first song to the last, our guests could not stop dancing. Adrian and his team read the room perfectly and kept the energy going all night.",
+    couple: "Jessica & Mark",
+    venue: "The Bell Tower on 34th",
+  },
+  {
+    quote: "We still have guests telling us it was the best wedding they have ever been to. The band made it feel like a real party, not just a reception.",
+    couple: "Lauren & David",
+    venue: "The Astorian",
+  },
+  {
+    quote: "The Greenway Band was the single best investment we made for our wedding. They brought the energy, the talent, and the professionalism we were looking for.",
+    couple: "Priya & James",
+    venue: "Hotel Granduca",
+  },
+];
+
 // ── Helpers ──
 const formatDateLong = (dateStr) => {
   if (!dateStr) return "";
@@ -179,6 +203,7 @@ const PROPOSAL_CSS = `
     .gw-proposal .gw-package-title { font-size: 24px !important; }
     .gw-proposal .gw-greeting { font-size: 22px !important; }
     .gw-proposal .gw-includes-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .gw-cocktail-grid { grid-template-columns: 1fr !important; }
   }
 
   .gw-proposal a { color: var(--cream-muted); text-decoration: none; }
@@ -672,6 +697,8 @@ const ProposalPublic = ({ slug }) => {
   const receptionStart = co.reception_start || "7:00 PM";
   const receptionEnd = co.reception_end || "11:00 PM";
   const introParagraph = co.intro_paragraph || "We're looking forward to bringing your evening to life.";
+  const showCocktailOptions = !!co.primary_package && co.show_cocktail !== false && co.cocktail_options?.length > 0;
+  const cocktailOptions = co.cocktail_options || ["solo", "duo", "trio"];
 
   const contentStyle = {
     maxWidth: 640,
@@ -687,7 +714,6 @@ const ProposalPublic = ({ slug }) => {
       <section
         className="gw-cover"
         style={{
-          minHeight: "100vh",
           minHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
@@ -1165,6 +1191,99 @@ const ProposalPublic = ({ slug }) => {
         </>
       )}
 
+      {/* ════════════════════════════════════════ */}
+      {/* SECTION 5b: COCKTAIL HOUR OPTIONS        */}
+      {/* ════════════════════════════════════════ */}
+      {showCocktailOptions && (
+        <>
+          <Divider />
+          <section style={{ padding: "80px 0" }}>
+            <div className="gw-section-content" style={contentStyle}>
+              <SectionLabel className="reveal">Cocktail hour</SectionLabel>
+              <div
+                className="reveal reveal-delay-1"
+                style={{
+                  fontFamily: "'Bodoni Moda', serif",
+                  fontSize: "clamp(24px, 5vw, 28px)",
+                  color: "var(--cream)",
+                  fontWeight: 400,
+                  marginBottom: 8,
+                }}
+              >
+                Set the Tone Early
+              </div>
+              <div
+                className="reveal reveal-delay-1"
+                style={{
+                  fontSize: 13,
+                  color: "var(--cream-dim)",
+                  lineHeight: 1.8,
+                  fontWeight: 300,
+                  marginBottom: 48,
+                  maxWidth: 480,
+                }}
+              >
+                Add live music to your cocktail hour for a seamless transition into the evening.
+              </div>
+
+              <div
+                className="reveal reveal-delay-2 gw-cocktail-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 16,
+                }}
+              >
+                {COCKTAIL_TIERS.filter((t) => cocktailOptions.includes(t.key)).map((tier) => (
+                  <div
+                    key={tier.key}
+                    style={{
+                      border: "0.5px solid var(--border-med)",
+                      padding: "32px 24px",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: "'Bodoni Moda', serif",
+                        fontSize: 20,
+                        color: "var(--cream)",
+                        fontWeight: 400,
+                        marginBottom: 12,
+                      }}
+                    >
+                      {tier.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--cream-dim)",
+                        lineHeight: 1.7,
+                        fontWeight: 300,
+                        marginBottom: 24,
+                        minHeight: 40,
+                      }}
+                    >
+                      {tier.desc}
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: "'Bodoni Moda', serif",
+                        fontSize: 22,
+                        color: "var(--cream)",
+                        fontWeight: 400,
+                      }}
+                    >
+                      {formatPrice(tier.price)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+
       <Divider />
 
       {/* ════════════════════════════════════════ */}
@@ -1237,6 +1356,68 @@ const ProposalPublic = ({ slug }) => {
                   }}
                 >
                   {cell.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <Divider />
+
+      {/* ════════════════════════════════════════ */}
+      {/* SECTION 6b: TESTIMONIALS                 */}
+      {/* ════════════════════════════════════════ */}
+      <section style={{ padding: "80px 0" }}>
+        <div className="gw-section-content" style={contentStyle}>
+          <SectionLabel className="reveal">What couples say</SectionLabel>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
+            {TESTIMONIALS.map((t, i) => (
+              <div
+                key={i}
+                className={`reveal reveal-delay-${Math.min(i + 1, 3)}`}
+                style={{
+                  paddingBottom: i < TESTIMONIALS.length - 1 ? 48 : 0,
+                  borderBottom:
+                    i < TESTIMONIALS.length - 1
+                      ? "0.5px solid var(--border-light)"
+                      : "none",
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: "'Bodoni Moda', serif",
+                    fontStyle: "italic",
+                    fontSize: "clamp(16px, 3.5vw, 18px)",
+                    color: "var(--cream-muted)",
+                    lineHeight: 1.8,
+                    fontWeight: 400,
+                    marginBottom: 20,
+                  }}
+                >
+                  "{t.quote}"
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--cream)",
+                      fontWeight: 500,
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    {t.couple}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--cream-faint)",
+                      fontWeight: 300,
+                    }}
+                  >
+                    {t.venue}
+                  </span>
                 </div>
               </div>
             ))}
