@@ -12,6 +12,7 @@ import ProposalConfigPanel from "../components/ProposalConfigPanel";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
+import { callClaude, getApiKey, hasApiKey } from "../utils/claudeApi";
 
 // Normalize consultation_date to ISO with seconds and Z
 const normalizeConsultationDate = (val) => {
@@ -233,6 +234,10 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   const [saving, setSaving] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [inquiryExpanded, setInquiryExpanded] = useState(false);
+  const [pricingSuggestion, setPricingSuggestion] = useState(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState(null);
+  const [pricingToast, setPricingToast] = useState(null);
   const deleteTimerRef = useRef(null);
 
   useEffect(() => {
@@ -242,7 +247,88 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
     }
   }, [confirmingDelete]);
 
-  const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const update = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    if (["config", "venue", "guest_count", "event_date"].includes(key)) {
+      setPricingSuggestion(null);
+      setPricingError(null);
+    }
+  };
+
+  const handleSuggestPrice = async () => {
+    const apiKey = getApiKey();
+    if (!apiKey || !form.config) return;
+
+    setPricingLoading(true);
+    setPricingError(null);
+    setPricingSuggestion(null);
+
+    const systemPrompt = `You are a pricing advisor for The Greenway Band, a premium live wedding entertainment company in Houston, TX. Your job is to suggest a fair, competitive price for a specific lead based on the data provided.
+
+Base pricing (Greenway Band):
+- 6 piece: $9,000
+- 8 piece: $10,750
+- 10 piece: $12,500
+- 12 piece: $14,750
+- 14 piece: $16,875
+
+Kirby Collective pricing range: $8,000 to $12,000 for 6 to 10 piece.
+
+Adjustment factors:
+- Peak season months (Oct, Nov, Mar, Apr, May, Jun) may justify 5 to 15 percent above base
+- Premium Houston venues (The Houstonian, Hotel Granduca, The Astorian, Hotel ZaZa, The Corinthian, The Bell Tower on 34th, Chateau Polonez) may justify 5 to 10 percent above base
+- Guest count 200+ signals larger budget capacity
+- If the client stated a budget, respect it: never suggest more than 15 percent above stated budget
+- GCE sourced leads have a 20 percent commission. Note the net amount Adrian receives after commission
+
+Respond with ONLY a JSON object. No markdown, no backticks, no preamble:
+{
+  "suggested_price": 14375,
+  "reasoning": "Brief 2 to 4 sentence explanation of why this price makes sense."
+}`;
+
+    const guestRaw = String(form.guest_count || "").replace(/\D/g, "");
+    const priceRaw = parseCurrency(form.price);
+
+    const userPrompt = `Lead data:
+- Brand: ${form.brand}
+- Configuration: ${form.config}
+- Venue: ${form.venue || "Not specified"}
+- Event date: ${form.event_date || "Not specified"}
+- Guest count: ${guestRaw || "Not specified"}
+- Source: ${form.source || "Not specified"}
+- Budget stated: ${form.budget_stated || "Not stated"}
+- Current price: ${priceRaw ? fmtCurrency(priceRaw) : "Not set"}
+- Planner: ${form.planner_name || "None"}
+
+Suggest a price for this lead.`;
+
+    try {
+      const response = await callClaude({
+        systemPrompt,
+        userPrompt,
+        apiKey,
+        maxTokens: 800,
+      });
+
+      // Strip markdown code fences if present
+      const cleaned = response.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.suggested_price && parsed.reasoning) {
+        setPricingSuggestion(parsed);
+      } else {
+        setPricingError("Could not generate suggestion. Try again.");
+      }
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        setPricingError("Could not generate suggestion. Try again.");
+      } else {
+        setPricingError(err.message || "Could not generate suggestion. Try again.");
+      }
+    } finally {
+      setPricingLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -585,6 +671,159 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
           />
         </FormField>
       </div>
+
+      {/* Suggest Price */}
+      {!isNew && (
+        <>
+          <button
+            onClick={handleSuggestPrice}
+            disabled={!form.config || !hasApiKey() || pricingLoading}
+            title={!form.config ? "Select a configuration first" : !hasApiKey() ? "Add your Claude API key in Settings" : undefined}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              width: "100%",
+              padding: "10px 16px",
+              background: pricingLoading ? COLORS.bg : COLORS.white,
+              color: (!form.config || !hasApiKey()) ? COLORS.textLight : COLORS.text,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: RADII.sm,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: (!form.config || !hasApiKey() || pricingLoading) ? "not-allowed" : "pointer",
+              fontFamily: FONTS.body,
+              marginBottom: 16,
+              opacity: (!form.config || !hasApiKey()) ? 0.5 : 1,
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              if (form.config && hasApiKey() && !pricingLoading) {
+                e.currentTarget.style.background = COLORS.bg;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!pricingLoading) {
+                e.currentTarget.style.background = COLORS.white;
+              }
+            }}
+          >
+            {pricingLoading ? (
+              <>
+                <span
+                  style={{
+                    width: 14,
+                    height: 14,
+                    border: `2px solid ${COLORS.border}`,
+                    borderTopColor: COLORS.text,
+                    borderRadius: "50%",
+                    animation: "spin 0.6s linear infinite",
+                    flexShrink: 0,
+                  }}
+                />
+                Calculating...
+              </>
+            ) : (
+              <>
+                <Icon type="spark" size={14} color={(!form.config || !hasApiKey()) ? COLORS.textLight : COLORS.text} />
+                Suggest Price
+              </>
+            )}
+          </button>
+
+          {/* Pricing suggestion result */}
+          {pricingSuggestion && (
+            <div
+              style={{
+                background: COLORS.white,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: RADII.lg,
+                padding: 16,
+                marginBottom: 16,
+                animation: "fadeIn 0.2s ease",
+              }}
+            >
+              <div style={{ marginBottom: 12 }}>
+                {(() => {
+                  const currentPrice = parseCurrency(form.price);
+                  return currentPrice && currentPrice !== pricingSuggestion.suggested_price ? (
+                    <div style={{ fontSize: 13, color: COLORS.textMuted }}>
+                      Current: {fmtCurrency(currentPrice)} → Suggested:{" "}
+                      <span style={{ fontSize: 20, fontWeight: 700, color: COLORS.black }}>
+                        {fmtCurrency(pricingSuggestion.suggested_price)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.black }}>
+                      {fmtCurrency(pricingSuggestion.suggested_price)}
+                    </div>
+                  );
+                })()}
+              </div>
+              <div
+                style={{
+                  fontSize: 12.5,
+                  color: COLORS.textMuted,
+                  lineHeight: 1.6,
+                  marginBottom: 14,
+                }}
+              >
+                {pricingSuggestion.reasoning}
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button
+                  onClick={() => {
+                    update("price", fmtCurrency(pricingSuggestion.suggested_price));
+                    setPricingToast("Price applied");
+                    setTimeout(() => setPricingToast(null), 2500);
+                  }}
+                  style={{
+                    padding: "6px 16px",
+                    background: COLORS.black,
+                    color: COLORS.white,
+                    border: "none",
+                    borderRadius: RADII.pill,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: FONTS.body,
+                  }}
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => setPricingSuggestion(null)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: COLORS.textMuted,
+                    fontSize: 12,
+                    cursor: "pointer",
+                    fontFamily: FONTS.body,
+                    padding: 0,
+                  }}
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Pricing error */}
+          {pricingError && !pricingLoading && (
+            <div
+              style={{
+                fontSize: 12.5,
+                color: COLORS.red,
+                marginBottom: 16,
+              }}
+            >
+              {pricingError}
+            </div>
+          )}
+        </>
+      )}
 
       {/* Proposal */}
       {!isNew && (
@@ -1015,6 +1254,29 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
         )}
       </div>
       </div>
+
+      {/* Price applied toast */}
+      {pricingToast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 32,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: COLORS.black,
+            color: COLORS.white,
+            padding: "10px 24px",
+            borderRadius: RADII.pill,
+            fontSize: 13,
+            fontWeight: 600,
+            zIndex: 200,
+            animation: "fadeIn 0.2s ease",
+            fontFamily: FONTS.body,
+          }}
+        >
+          {pricingToast}
+        </div>
+      )}
     </SlideOverPanel>
   );
 };
