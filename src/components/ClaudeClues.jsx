@@ -87,6 +87,7 @@ Generate 3 to 5 insights. Be specific — use names and dates, not generic advic
       updated_at: l.updated_at,
       guest_count: l.guest_count,
       config: l.config,
+      lead_score: l.lead_score,
     }));
 
     const userPrompt = `Current pipeline data (all leads):

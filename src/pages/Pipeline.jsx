@@ -11,6 +11,7 @@ import MCCueSheet from "../components/MCCueSheet";
 import ProposalConfigPanel from "../components/ProposalConfigPanel";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
+import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
 
 // Normalize consultation_date to ISO with seconds and Z
 const normalizeConsultationDate = (val) => {
@@ -31,50 +32,72 @@ const STAGE_ORDER = PIPELINE_STAGES.reduce((acc, s, i) => {
 const truncStyle = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
 // Lead table row — matches vision mockup exactly
-const LeadRow = ({ lead, onDraft, onView }) => (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,0.7fr) 70px",
-      alignItems: "center",
-      padding: "14px 20px",
-      borderBottom: `1px solid ${COLORS.borderLight}`,
-      cursor: "pointer",
-      transition: "background 0.1s",
-    }}
-    onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.bg)}
-    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    onClick={() => onView(lead)}
-  >
-    <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.black, ...truncStyle }}>
-        {getLeadName(lead)}
-      </div>
-      <div style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, ...truncStyle }}>
-        {lead.venue}
-      </div>
-    </div>
-    <div style={{ fontSize: 13, color: COLORS.text, ...truncStyle }}>
-      {formatDate(lead.event_date)}
-    </div>
-    <div style={{ minWidth: 0, overflow: "hidden" }}>
-      <BrandBadge brand={lead.brand} />
-    </div>
-    <div style={{ minWidth: 0, overflow: "hidden" }}>
-      <StageBadge stage={lead.stage} />
-    </div>
-    <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.black, ...truncStyle }}>
-      {formatCurrency(lead.price)}
-    </div>
+const LeadRow = ({ lead, onDraft, onView }) => {
+  const score = lead.lead_score ?? calculateLeadScore(lead);
+  const scoreInfo = getScoreDisplay(score);
+  return (
     <div
-      style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}
-      onClick={(e) => e.stopPropagation()}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.2fr) 100px minmax(0,0.7fr) 70px",
+        alignItems: "center",
+        padding: "14px 20px",
+        borderBottom: `1px solid ${COLORS.borderLight}`,
+        cursor: "pointer",
+        transition: "background 0.1s",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = COLORS.bg)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      onClick={() => onView(lead)}
     >
-      <ActionButton icon="mail" title="Draft email" onClick={() => onDraft(lead)} />
-      <ActionButton icon="eye" title="View" onClick={() => onView(lead)} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.black, ...truncStyle }}>
+          {getLeadName(lead)}
+        </div>
+        <div style={{ fontSize: 11.5, color: COLORS.textMuted, marginTop: 2, ...truncStyle }}>
+          {lead.venue}
+        </div>
+      </div>
+      <div style={{ fontSize: 13, color: COLORS.text, ...truncStyle }}>
+        {formatDate(lead.event_date)}
+      </div>
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
+        <BrandBadge brand={lead.brand} />
+      </div>
+      <div style={{ minWidth: 0, overflow: "hidden" }}>
+        <StageBadge stage={lead.stage} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.black }}>{score}</span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: scoreInfo.color,
+            background: scoreInfo.bg,
+            padding: "2px 7px",
+            borderRadius: RADII.pill,
+            textTransform: "uppercase",
+            letterSpacing: "0.03em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {scoreInfo.label}
+        </span>
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.black, ...truncStyle }}>
+        {formatCurrency(lead.price)}
+      </div>
+      <div
+        style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <ActionButton icon="mail" title="Draft email" onClick={() => onDraft(lead)} />
+        <ActionButton icon="eye" title="View" onClick={() => onView(lead)} />
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 // Small action button (mail, eye)
 const ActionButton = ({ icon, title, onClick }) => (
@@ -281,6 +304,69 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   return (
     <SlideOverPanel open title={title} subtitle={subtitle} onClose={onClose}>
       <div onClick={() => confirmingDelete && setConfirmingDelete(false)}>
+      {/* Lead Score Bar */}
+      {!isNew && (() => {
+        const score = lead.lead_score ?? calculateLeadScore(lead);
+        const scoreInfo = getScoreDisplay(score);
+        const updatedAt = lead.lead_score_updated_at;
+        const relativeTime = updatedAt ? (() => {
+          const diff = Date.now() - new Date(updatedAt).getTime();
+          const mins = Math.floor(diff / 60000);
+          if (mins < 1) return "just now";
+          if (mins < 60) return `${mins}m ago`;
+          const hrs = Math.floor(mins / 60);
+          if (hrs < 24) return `${hrs}h ago`;
+          const days = Math.floor(hrs / 24);
+          return `${days}d ago`;
+        })() : null;
+        return (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <span style={{ fontSize: 24, fontWeight: 700, color: COLORS.black, fontFamily: FONTS.body }}>{score}</span>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: scoreInfo.color,
+                  background: scoreInfo.bg,
+                  padding: "3px 10px",
+                  borderRadius: RADII.pill,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.03em",
+                }}
+              >
+                {scoreInfo.label}
+              </span>
+            </div>
+            <div
+              style={{
+                width: "100%",
+                height: 4,
+                borderRadius: 2,
+                background: COLORS.borderLight,
+                overflow: "hidden",
+                marginBottom: 6,
+              }}
+            >
+              <div
+                style={{
+                  width: `${score}%`,
+                  height: "100%",
+                  borderRadius: 2,
+                  background: scoreInfo.color,
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+            {relativeTime && (
+              <div style={{ fontSize: 11, color: COLORS.textLight }}>
+                Last calculated {relativeTime}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Couple info */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <FormField label="Partner 1 First">
@@ -945,6 +1031,8 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
   const [gigSheetLead, setGigSheetLead] = useState(null);
   const [cueSheetLead, setCueSheetLead] = useState(null);
   const [proposalConfigLead, setProposalConfigLead] = useState(null);
+  // Score sort: null = default, "desc" = highest first, "asc" = lowest first
+  const [scoreSort, setScoreSort] = useState(null);
 
   // Open a lead from external navigation (e.g., Dashboard click)
   useEffect(() => {
@@ -993,16 +1081,25 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
       result = result.filter((l) => l.source === sourceFilter);
     }
 
-    // Sort by stage priority, then event date
-    result.sort((a, b) => {
-      const stageDiff =
-        (STAGE_ORDER[a.stage] ?? 99) - (STAGE_ORDER[b.stage] ?? 99);
-      if (stageDiff !== 0) return stageDiff;
-      return (a.event_date || "").localeCompare(b.event_date || "");
-    });
+    // Sort: score sort overrides default when active
+    if (scoreSort) {
+      result.sort((a, b) => {
+        const aScore = a.lead_score ?? calculateLeadScore(a);
+        const bScore = b.lead_score ?? calculateLeadScore(b);
+        return scoreSort === "desc" ? bScore - aScore : aScore - bScore;
+      });
+    } else {
+      // Default: stage priority, then event date
+      result.sort((a, b) => {
+        const stageDiff =
+          (STAGE_ORDER[a.stage] ?? 99) - (STAGE_ORDER[b.stage] ?? 99);
+        if (stageDiff !== 0) return stageDiff;
+        return (a.event_date || "").localeCompare(b.event_date || "");
+      });
+    }
 
     return result;
-  }, [leads, search, stageFilter, brandFilter, sourceFilter]);
+  }, [leads, search, stageFilter, brandFilter, sourceFilter, scoreSort]);
 
   const handleSaveNew = async (data) => {
     await addLead(data);
@@ -1172,27 +1269,56 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.2fr) minmax(0,0.7fr) 70px",
+            gridTemplateColumns: "minmax(0,2fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.2fr) 100px minmax(0,0.7fr) 70px",
             padding: "12px 20px",
             borderBottom: `1px solid ${COLORS.border}`,
             background: COLORS.bg,
           }}
         >
-          {["Couple", "Event Date", "Brand", "Stage", "Value", ""].map(
-            (h) => (
-              <span
-                key={h || "actions"}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: COLORS.textLight,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                {h}
-              </span>
-            )
+          {["Couple", "Event Date", "Brand", "Stage", "Score", "Value", ""].map(
+            (h) =>
+              h === "Score" ? (
+                <span
+                  key="Score"
+                  onClick={() =>
+                    setScoreSort((prev) =>
+                      prev === null ? "desc" : prev === "desc" ? "asc" : null
+                    )
+                  }
+                  style={{
+                    fontSize: 11,
+                    fontWeight: scoreSort ? 700 : 600,
+                    color: scoreSort ? COLORS.black : COLORS.textLight,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    cursor: "pointer",
+                    userSelect: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  Score
+                  {scoreSort && (
+                    <span style={{ fontSize: 9, lineHeight: 1 }}>
+                      {scoreSort === "desc" ? "\u25BC" : "\u25B2"}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                <span
+                  key={h || "actions"}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: COLORS.textLight,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                  }}
+                >
+                  {h}
+                </span>
+              )
           )}
         </div>
 

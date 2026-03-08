@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, supabaseConfigured } from "./useAuth";
 import { seedLeads, seedMusicians, testLeads } from "../data/seed";
 import { seedGalleries, seedSocialPosts } from "../data/socialSeed";
+import { calculateLeadScore } from "../utils/leadScoring";
 
 export default function useData() {
   const [leads, setLeads] = useState([]);
@@ -174,10 +175,16 @@ export default function useData() {
   // ── Lead operations ──
   const addLead = useCallback(
     async (lead) => {
+      const now = new Date().toISOString();
+      const leadWithScore = {
+        ...lead,
+        lead_score: calculateLeadScore({ ...lead, created_at: lead.created_at || now }),
+        lead_score_updated_at: now,
+      };
       if (supabaseConfigured) {
         const { data, error } = await supabase
           .from("leads")
-          .insert(lead)
+          .insert(leadWithScore)
           .select()
           .single();
         if (error) throw error;
@@ -187,10 +194,10 @@ export default function useData() {
         return data;
       } else {
         const newLead = {
-          ...lead,
+          ...leadWithScore,
           id: "lead-" + Date.now(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: now,
+          updated_at: now,
         };
         setLeads((prev) => [newLead, ...prev]);
         return newLead;
@@ -201,12 +208,22 @@ export default function useData() {
 
   const updateLead = useCallback(
     async (id, updates) => {
+      const now = new Date().toISOString();
+      // Merge updates with existing lead to calculate accurate score
+      const existingLead = leadsRef.current.find((l) => l.id === id) || {};
+      const merged = { ...existingLead, ...updates };
+      const scoreUpdates = {
+        ...updates,
+        lead_score: calculateLeadScore(merged),
+        lead_score_updated_at: now,
+        updated_at: now,
+      };
       if (supabaseConfigured) {
         // Capture old lead for GCal date comparison
-        const oldLead = leadsRef.current.find((l) => l.id === id) || null;
+        const oldLead = existingLead;
         const { data, error } = await supabase
           .from("leads")
-          .update({ ...updates, updated_at: new Date().toISOString() })
+          .update(scoreUpdates)
           .eq("id", id)
           .select()
           .single();
@@ -221,11 +238,11 @@ export default function useData() {
         setLeads((prev) =>
           prev.map((l) =>
             l.id === id
-              ? { ...l, ...updates, updated_at: new Date().toISOString() }
+              ? { ...l, ...scoreUpdates }
               : l
           )
         );
-        return { id, ...updates };
+        return { id, ...scoreUpdates };
       }
     },
     []

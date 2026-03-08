@@ -28,6 +28,8 @@ export const seedLeads = [
     notes: "Bride's mother saw us at the Wortham event. Groom is a musician.",
     planner_name: null,
     planner_email: null,
+    lead_score: 65,
+    lead_score_updated_at: "2026-03-04T14:00:00Z",
   },
   {
     id: "lead-002",
@@ -55,6 +57,8 @@ export const seedLeads = [
     notes: "14 piece requested. Planner is Keely Thorne.",
     planner_name: "Keely Thorne",
     planner_email: null,
+    lead_score: 48,
+    lead_score_updated_at: "2026-03-02T11:00:00Z",
   },
   {
     id: "lead-003",
@@ -82,6 +86,8 @@ export const seedLeads = [
     notes: "Loved the KC vibe. Want Spanish language songs.",
     planner_name: null,
     planner_email: null,
+    lead_score: 48,
+    lead_score_updated_at: "2026-03-03T09:00:00Z",
   },
   {
     id: "lead-004",
@@ -109,6 +115,8 @@ export const seedLeads = [
     notes: "GCE referral. Budget conscious but wants big sound.",
     planner_name: null,
     planner_email: null,
+    lead_score: 42,
+    lead_score_updated_at: "2026-03-04T16:00:00Z",
   },
   {
     id: "lead-005",
@@ -136,6 +144,8 @@ export const seedLeads = [
     notes: "Booked via Keely Thorne. Contract signed, deposit received.",
     planner_name: "Keely Thorne",
     planner_email: null,
+    lead_score: 90,
+    lead_score_updated_at: "2026-03-01T10:00:00Z",
   },
   {
     id: "lead-006",
@@ -163,6 +173,8 @@ export const seedLeads = [
     notes: "Found us through Google. Interested in KC.",
     planner_name: null,
     planner_email: null,
+    lead_score: 22,
+    lead_score_updated_at: "2026-03-04T09:00:00Z",
   },
 ];
 
