@@ -906,15 +906,22 @@ const ProposalPublic = ({ slug }) => {
             /* ── TWO OPTIONS LAYOUT (C/D) ── */
             <>
               <SectionLabel className="reveal">Your options</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 56 }}>
-                <div className="reveal reveal-delay-1">
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                <div className="reveal reveal-delay-1" style={{ paddingBottom: 48 }}>
                   <OptionColumn
                     label="Option 1"
                     name={packageName}
                     configKey={configKey}
                   />
                 </div>
-                <div className="reveal reveal-delay-2">
+                <div
+                  style={{
+                    width: "100%",
+                    height: 1,
+                    background: "var(--border-light)",
+                  }}
+                />
+                <div className="reveal reveal-delay-2" style={{ paddingTop: 48 }}>
                   <OptionColumn
                     label="Option 2"
                     name={option2PackageName}
