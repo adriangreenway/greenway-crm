@@ -152,12 +152,6 @@ const PROPOSAL_CSS = `
   .gw-proposal .reveal-delay-4 { transition-delay: 0.4s; }
   .gw-proposal .reveal-delay-5 { transition-delay: 0.5s; }
 
-  /* Skeleton pulse */
-  @keyframes gwPulse {
-    0%, 100% { opacity: 0.3; }
-    50% { opacity: 0.15; }
-  }
-
   /* Section content wrapper */
   .gw-proposal .section-content {
     max-width: 680px;
@@ -731,98 +725,39 @@ const ProposalPublic = ({ slug }) => {
     };
   }, []);
 
-  // Intersection Observer for reveals
+  // Intersection Observer for reveals (sections below the cover only)
   useEffect(() => {
     if (loading || error) return;
 
-    const timer = setTimeout(() => {
-      const container = containerRef.current;
-      if (!container) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-      observerRef.current = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              entry.target.classList.add("visible");
-            }
-          });
-        },
-        { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
-      );
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+    );
 
-      container.querySelectorAll(".reveal").forEach((el) => {
+    // Only observe reveal elements OUTSIDE the cover section
+    container.querySelectorAll(".reveal").forEach((el) => {
+      if (!el.closest(".cover")) {
         observerRef.current.observe(el);
-      });
-
-      container.querySelectorAll(".cover .reveal").forEach((el) => {
-        setTimeout(() => el.classList.add("visible"), 200);
-      });
-    }, 100);
+      }
+    });
 
     return () => {
-      clearTimeout(timer);
       if (observerRef.current) observerRef.current.disconnect();
     };
   }, [loading, error, proposal]);
 
-  // ── Loading State ──
+  // ── Loading State: solid black screen, nothing visible ──
   if (loading) {
-    return (
-      <div className="gw-proposal">
-        <div
-          className="cover"
-          style={{
-            minHeight: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            textAlign: "center",
-            padding: "60px 32px",
-          }}
-        >
-          <div style={{ marginBottom: 80 }}>
-            <div className="cover-rule" />
-            <div className="cover-the">THE</div>
-            <div className="cover-name">GREENWAY</div>
-            <div className="cover-band">BAND</div>
-            <div className="cover-rule" style={{ marginTop: 16 }} />
-          </div>
-          <div>
-            <div
-              style={{
-                width: 160,
-                height: 14,
-                background: "var(--cream-faint)",
-                borderRadius: 4,
-                margin: "0 auto 12px",
-                animation: "gwPulse 1.8s ease-in-out infinite",
-              }}
-            />
-            <div
-              style={{
-                width: 220,
-                height: 28,
-                background: "var(--cream-faint)",
-                borderRadius: 4,
-                margin: "0 auto 16px",
-                animation: "gwPulse 1.8s ease-in-out infinite 0.2s",
-              }}
-            />
-            <div
-              style={{
-                width: 140,
-                height: 12,
-                background: "var(--cream-faint)",
-                borderRadius: 4,
-                margin: "0 auto",
-                animation: "gwPulse 1.8s ease-in-out infinite 0.4s",
-              }}
-            />
-          </div>
-        </div>
-      </div>
-    );
+    return <div className="gw-proposal" />;
   }
 
   // ── Error State ──
@@ -960,7 +895,7 @@ const ProposalPublic = ({ slug }) => {
 
       {/* ═══ COVER ═══ */}
       <section className="cover">
-        <div className="reveal">
+        <div>
           <div className="cover-rule" />
           <div className="cover-the">THE</div>
           <div className="cover-name">GREENWAY</div>
@@ -969,7 +904,7 @@ const ProposalPublic = ({ slug }) => {
           <div className="cover-descriptor">The sound of a great night.</div>
         </div>
 
-        <div className="reveal reveal-delay-2 cover-couple">
+        <div className="cover-couple">
           <div className="cover-prepared">Prepared for</div>
           <div className="cover-couple-names">
             {p1First} <em>&amp;</em> {p2First}
