@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, supabaseConfigured } from "./useAuth";
-import { seedLeads, seedMusicians } from "../data/seed";
+import { seedLeads, seedMusicians, testLeads } from "../data/seed";
 import { seedGalleries, seedSocialPosts } from "../data/socialSeed";
 
 export default function useData() {
@@ -23,8 +23,8 @@ export default function useData() {
       loadFromSupabase();
       subscribeToChanges();
     } else {
-      // Fallback to in-memory seed data
-      setLeads(seedLeads);
+      // Fallback to in-memory seed data (includes test leads)
+      setLeads([...seedLeads, ...testLeads]);
       setMusicians(seedMusicians);
       setContacts([]);
       setGalleries(seedGalleries);
@@ -51,7 +51,11 @@ export default function useData() {
       if (galleriesRes.error) throw galleriesRes.error;
       if (socialRes.error) throw socialRes.error;
 
-      setLeads(leadsRes.data || []);
+      // Merge test leads (dedup by id so they always appear in Pipeline)
+      const supaLeads = leadsRes.data || [];
+      const supaIds = new Set(supaLeads.map((l) => l.id));
+      const merged = [...supaLeads, ...testLeads.filter((t) => !supaIds.has(t.id))];
+      setLeads(merged);
       setMusicians(musiciansRes.data || []);
       setContacts(contactsRes.data || []);
       setGigAssignments(gigAssignRes.data || []);
@@ -59,7 +63,7 @@ export default function useData() {
       setSocialPosts(socialRes.data?.length ? socialRes.data : seedSocialPosts);
     } catch (err) {
       console.warn("Supabase load failed, falling back to seed data:", err.message);
-      setLeads(seedLeads);
+      setLeads([...seedLeads, ...testLeads]);
       setMusicians(seedMusicians);
       setContacts([]);
       setGalleries(seedGalleries);
@@ -262,7 +266,10 @@ export default function useData() {
         .eq("id", leadId)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase proposal update error:", error);
+        throw new Error(`Supabase: ${error.message} (${error.code})`);
+      }
       setLeads((prev) =>
         prev.map((l) => (l.id === data.id ? data : l))
       );

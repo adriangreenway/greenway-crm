@@ -1,54 +1,65 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
-// ── Band configurations: grouped roles with counts (matching Blick PDF / locked template) ──
+// ── Band configurations: grouped roles with counts (matching gold standard) ──
 const BAND_CONFIGS = {
-  '6pc': [
-    { role: 'Lead Vocals', count: 1 },
+  '6 piece': [
+    { role: 'Vocals', count: 2 },
     { role: 'Keys', count: 1 },
     { role: 'Guitar', count: 1 },
     { role: 'Bass', count: 1 },
     { role: 'Drums', count: 1 },
-    { role: 'Tracks / Production', count: 1 },
   ],
-  '8pc': [
-    { role: 'Male Vocals', count: 1 },
-    { role: 'Female Vocals', count: 1 },
+  '8 piece': [
+    { role: 'Vocals', count: 3 },
     { role: 'Keys', count: 1 },
     { role: 'Guitar', count: 1 },
     { role: 'Bass', count: 1 },
     { role: 'Drums', count: 1 },
-    { role: 'Saxophone', count: 1 },
-    { role: 'Tracks / Production', count: 1 },
+    { role: 'Horns', count: 1 },
   ],
-  '10pc': [
-    { role: 'Male Vocals', count: 1 },
-    { role: 'Female Vocals', count: 2 },
+  '10 piece': [
+    { role: 'Vocals', count: 3 },
     { role: 'Keys', count: 1 },
     { role: 'Guitar', count: 1 },
     { role: 'Bass', count: 1 },
     { role: 'Drums', count: 1 },
     { role: 'Horns', count: 3 },
   ],
-  '12pc': [
-    { role: 'Male Vocals', count: 1 },
-    { role: 'Female Vocals', count: 2 },
+  '12 piece': [
+    { role: 'Vocals', count: 3 },
     { role: 'Keys', count: 1 },
     { role: 'Guitar', count: 2 },
     { role: 'Bass', count: 1 },
     { role: 'Drums', count: 1 },
-    { role: 'Percussion', count: 1 },
     { role: 'Horns', count: 3 },
+    { role: 'Percussion', count: 1 },
   ],
-  '14pc': [
-    { role: 'Male Vocals', count: 2 },
-    { role: 'Female Vocals', count: 2 },
+  '14 piece': [
+    { role: 'Vocals', count: 4 },
     { role: 'Keys', count: 1 },
-    { role: 'Guitar', count: 1 },
+    { role: 'Guitar', count: 2 },
     { role: 'Bass', count: 1 },
     { role: 'Drums', count: 1 },
+    { role: 'Horns', count: 4 },
     { role: 'Percussion', count: 1 },
-    { role: 'Horns', count: 5 },
   ],
+};
+
+// ── Upsell map: 6→10, 8→10, 10→14, 12→14, 14→null ──
+const UPSELL_MAP = {
+  '6 piece': '10 piece',
+  '8 piece': '10 piece',
+  '10 piece': '14 piece',
+  '12 piece': '14 piece',
+  '14 piece': null,
+};
+
+const PRICING = {
+  '6 piece': 9000,
+  '8 piece': 10750,
+  '10 piece': 12500,
+  '12 piece': 14750,
+  '14 piece': 16875,
 };
 
 const INCLUDED_SERVICES = [
@@ -104,17 +115,28 @@ const formatPrice = (price) => {
 };
 
 const getConfigKey = (config) => {
-  if (!config) return '10pc';
+  if (!config) return '10 piece';
   const num = parseInt(String(config).replace(/\D/g, ""), 10);
-  return [6, 8, 10, 12, 14].includes(num) ? `${num}pc` : '10pc';
+  return [6, 8, 10, 12, 14].includes(num) ? `${num} piece` : '10 piece';
 };
 
-const getPackageName = (config, override) => {
-  if (override?.package_name) return override.package_name;
-  if (!config) return "Band";
-  const num = config.replace(/\D/g, "");
-  return num ? `${num} Piece Band` : config;
+const getDisplayName = (key) => {
+  if (!key) return "Band";
+  const num = String(key).replace(/\D/g, "");
+  return num ? `${num} Piece Band` : key;
 };
+
+const hasHornSection = (key) => {
+  const musicians = BAND_CONFIGS[key];
+  if (!musicians) return false;
+  const horns = musicians.find((m) => m.role === "Horns");
+  return horns && horns.count >= 3;
+};
+
+const getPackageSubtitle = (key) =>
+  hasHornSection(key)
+    ? "Full reception entertainment + MC services + horn section"
+    : "Reception entertainment + MC services";
 
 // ── Injected CSS (matches template exactly) ──
 const PROPOSAL_CSS = `
@@ -168,38 +190,123 @@ const PROPOSAL_CSS = `
     50% { opacity: 0.15; }
   }
 
-  /* Dual package layout */
-  .gw-proposal .gw-package-dual {
+  /* Options grid (dual package layout) */
+  .gw-proposal .gw-options-grid {
     display: grid;
-    grid-template-columns: 1fr 1px 1fr;
-    gap: 0;
-    align-items: start;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+    margin-top: 48px;
   }
-  .gw-proposal .gw-package-dual .gw-package-divider {
-    background: var(--border-light);
-    align-self: stretch;
-    margin: 0 32px;
+
+  /* Instrument list */
+  .gw-proposal .gw-instrument-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .gw-proposal .gw-instrument-list li {
+    font-size: 14px;
+    color: var(--cream-muted);
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 300;
+  }
+  .gw-proposal .gw-instrument-list li:last-child {
+    border-bottom: none;
+  }
+  .gw-proposal .gw-instrument-list li .gw-count {
+    font-size: 11px;
+    color: var(--cream-faint);
+    letter-spacing: 1px;
+  }
+
+  /* Services list */
+  .gw-proposal .gw-services-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .gw-proposal .gw-services-list li {
+    font-size: 13px;
+    color: var(--cream-muted);
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+    font-weight: 300;
+  }
+  .gw-proposal .gw-services-list li:last-child {
+    border-bottom: none;
+  }
+
+  /* Option column labels */
+  .gw-proposal .gw-option-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .gw-option-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 22px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+  .gw-proposal .gw-option-subtitle {
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+  .gw-proposal .gw-col-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 16px;
+  }
+  .gw-proposal .gw-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 24px 0;
+    border-top: 0.5px solid var(--border-light);
+    border-bottom: 0.5px solid var(--border-light);
+    margin-top: 24px;
+  }
+  .gw-proposal .gw-price-label {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+  }
+  .gw-proposal .gw-option-price {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 28px;
+    color: var(--cream);
+    font-weight: 400;
+  }
+  .gw-proposal .gw-option-note {
+    font-size: 11px;
+    color: var(--cream-faint);
+    line-height: 1.8;
+    margin-top: 16px;
+    font-weight: 300;
   }
 
   /* Responsive */
-  @media (max-width: 768px) {
-    .gw-proposal .gw-package-dual {
-      grid-template-columns: 1fr;
-    }
-    .gw-proposal .gw-package-dual .gw-package-divider {
-      height: 1px;
-      width: 100%;
-      margin: 48px 0;
-    }
-  }
   @media (max-width: 600px) {
-    .gw-proposal .gw-package-inner { grid-template-columns: 1fr !important; }
+    .gw-proposal .gw-options-grid { grid-template-columns: 1fr; gap: 56px; }
     .gw-proposal .gw-details-grid { grid-template-columns: 1fr !important; }
     .gw-proposal .gw-detail-cell { border-right: none !important; }
     .gw-proposal .gw-cover-names { font-size: 24px !important; }
     .gw-proposal .gw-section-content { padding: 0 24px !important; }
     .gw-proposal .gw-cover { padding: 48px 24px !important; }
     .gw-proposal .gw-price-amount { font-size: 32px !important; }
+    .gw-proposal .gw-option-price { font-size: 24px !important; }
     .gw-proposal .gw-package-title { font-size: 24px !important; }
     .gw-proposal .gw-greeting { font-size: 22px !important; }
     .gw-proposal .gw-includes-grid { grid-template-columns: 1fr !important; }
@@ -293,168 +400,53 @@ const SectionLabel = ({ children, className }) => (
   </div>
 );
 
-// ── Reusable Package Content (used in single and dual layouts) ──
-const PackageContent = ({ name, configKey, receptionStart, receptionEnd, price, className }) => {
-  const musicians = BAND_CONFIGS[configKey] || BAND_CONFIGS['10pc'];
+// ── Reusable Option Column (used in single and dual layouts) ──
+const OptionColumn = ({ label, name, configKey, receptionStart, receptionEnd, price }) => {
+  const musicians = BAND_CONFIGS[configKey] || BAND_CONFIGS['10 piece'];
+  const subtitle = getPackageSubtitle(configKey);
 
   return (
-    <div className={className}>
-      {/* Package title */}
-      <div
-        className="gw-package-title"
-        style={{
-          fontFamily: "'Bodoni Moda', serif",
-          fontSize: "clamp(24px, 5vw, 28px)",
-          color: "var(--cream)",
-          fontWeight: 400,
-          marginBottom: 6,
-        }}
-      >
-        {name}
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: "var(--cream-dim)",
-          letterSpacing: "2px",
-          textTransform: "uppercase",
-          marginBottom: 48,
-        }}
-      >
-        Full reception entertainment + MC services
-      </div>
+    <div>
+      {label && <div className="gw-option-label">{label}</div>}
+      <div className="gw-option-title">{name}</div>
+      <div className="gw-option-subtitle">{subtitle}</div>
 
-      {/* Two-column inner grid: Musicians | Services + Performance Window */}
-      <div
-        className="gw-package-inner"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 48,
-        }}
-      >
-        {/* Left column: Musicians */}
-        <div>
-          <div
-            style={{
-              fontSize: 9,
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              marginBottom: 20,
-            }}
-          >
-            Musicians
-          </div>
-          {musicians.map((m) => (
-            <div
-              key={m.role}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                fontSize: 13,
-                color: "var(--cream)",
-                padding: "10px 0",
-                borderBottom: "0.5px solid var(--border)",
-                fontWeight: 300,
-              }}
-            >
-              <span>{m.role}</span>
-              <span>{m.count}</span>
-            </div>
-          ))}
-        </div>
+      {/* Musicians */}
+      <div className="gw-col-label">Musicians</div>
+      <ul className="gw-instrument-list">
+        {musicians.map((m) => (
+          <li key={m.role}>
+            {m.role}
+            <span className="gw-count">{m.count}</span>
+          </li>
+        ))}
+      </ul>
 
-        {/* Right column: Services + Performance Window */}
-        <div>
-          <div
-            style={{
-              fontSize: 9,
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              marginBottom: 20,
-            }}
-          >
-            Included Services
-          </div>
-          {INCLUDED_SERVICES.map((s) => (
-            <div
-              key={s}
-              style={{
-                fontSize: 13,
-                color: "var(--cream-muted)",
-                padding: "10px 0",
-                borderBottom: "0.5px solid var(--border)",
-                fontWeight: 300,
-              }}
-            >
-              {s}
-            </div>
-          ))}
+      {/* Included Services */}
+      <div className="gw-col-label" style={{ marginTop: 28 }}>Included Services</div>
+      <ul className="gw-services-list">
+        {INCLUDED_SERVICES.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ul>
 
-          {/* Performance Window */}
-          <div style={{ marginTop: 28 }}>
-            <div
-              style={{
-                fontSize: 9,
-                letterSpacing: "4px",
-                textTransform: "uppercase",
-                color: "var(--cream-faint)",
-                marginBottom: 20,
-              }}
-            >
-              Performance Window
-            </div>
-            <div
-              style={{
-                fontSize: 13,
-                color: "var(--cream-muted)",
-                padding: "10px 0",
-                borderBottom: "0.5px solid var(--border)",
-                fontWeight: 300,
-              }}
-            >
-              Reception: {receptionStart} to {receptionEnd}
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Performance Window */}
+      <div className="gw-col-label" style={{ marginTop: 28 }}>Performance Window</div>
+      <ul className="gw-services-list">
+        <li>Reception: {receptionStart} to {receptionEnd}</li>
+      </ul>
 
-      {/* Optional price (used in dual layout, Phase 3) */}
+      {/* Investment */}
       {price && (
-        <div
-          style={{
-            marginTop: 48,
-            paddingTop: 28,
-            borderTop: "0.5px solid var(--border-med)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 9,
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              marginBottom: 12,
-            }}
-          >
-            Investment
-          </div>
-          <div
-            className="gw-price-amount"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(28px, 7vw, 36px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-            }}
-          >
-            {price}
-          </div>
+        <div className="gw-price-row">
+          <span className="gw-price-label">Investment</span>
+          <span className="gw-option-price">{price}</span>
         </div>
       )}
+
+      <div className="gw-option-note">
+        Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
+      </div>
     </div>
   );
 };
@@ -681,16 +673,22 @@ const ProposalPublic = ({ slug }) => {
   const p2Full = `${p.partner2_first || ""} ${p.partner2_last || ""}`.trim();
   const dateLong = formatDateLong(p.event_date);
   const venue = p.venue || "";
-  const packageName = getPackageName(p.config, co);
-  const configKey = getConfigKey(co?.package_name || p.config);
+  const configKey = getConfigKey(co?.primary_package?.config || co?.package_name || p.config);
+  const packageName = co?.primary_package?.name || getDisplayName(configKey);
   const price = formatPrice(p.price);
-
-  // Dual package support (new schema)
-  const hasUpsell = !!co.upsell_package;
-  const upsellName = co.upsell_package?.name || "";
-  const upsellConfigKey = co.upsell_package?.config ? getConfigKey(co.upsell_package.config) : "10pc";
-  const upsellPrice = co.upsell_package?.price ? formatPrice(co.upsell_package.price) : "";
   const primaryPrice = co.primary_package?.price ? formatPrice(co.primary_package.price) : price;
+
+  // Upsell: read upsell_config, fall back to upsell_package, fall back to UPSELL_MAP
+  const resolvedUpsell = co.upsell_config
+    || (co.upsell_package?.config ? getConfigKey(co.upsell_package.config) : null)
+    || UPSELL_MAP[configKey]
+    || null;
+  const hasUpsell = !!resolvedUpsell;
+  const upsellConfigKey = resolvedUpsell ? getConfigKey(resolvedUpsell) : null;
+  const upsellName = hasUpsell ? (co.upsell_package?.name || getDisplayName(upsellConfigKey)) : "";
+  const upsellPrice = hasUpsell
+    ? formatPrice(co.upsell_package?.price || PRICING[upsellConfigKey] || 0)
+    : "";
   const hasCocktail = !!(co.cocktail_start && co.cocktail_end);
   const cocktailStart = co.cocktail_start || "";
   const cocktailEnd = co.cocktail_end || "";
@@ -935,42 +933,72 @@ const ProposalPublic = ({ slug }) => {
         <div
           className="gw-section-content"
           style={{
-            maxWidth: hasUpsell ? 900 : 640,
+            maxWidth: hasUpsell ? 800 : 640,
             margin: "0 auto",
             padding: "0 32px",
           }}
         >
-          <SectionLabel className="reveal">Your band</SectionLabel>
-
           {hasUpsell ? (
             /* ── DUAL PACKAGE LAYOUT ── */
-            <div className="reveal reveal-delay-1 gw-package-dual">
-              <PackageContent
-                name={packageName}
-                configKey={configKey}
-                receptionStart={receptionStart}
-                receptionEnd={receptionEnd}
-                price={primaryPrice}
-              />
-              <div className="gw-package-divider" />
-              <PackageContent
-                name={upsellName}
-                configKey={upsellConfigKey}
-                receptionStart={receptionStart}
-                receptionEnd={receptionEnd}
-                price={upsellPrice}
-              />
-            </div>
+            <>
+              <SectionLabel className="reveal">Your options</SectionLabel>
+              <div
+                className="reveal reveal-delay-1"
+                style={{
+                  fontFamily: "'Bodoni Moda', serif",
+                  fontSize: "clamp(24px, 5vw, 28px)",
+                  color: "var(--cream)",
+                  fontWeight: 400,
+                  marginBottom: 8,
+                }}
+              >
+                Two Ways to Fill the Room
+              </div>
+              <div
+                className="reveal reveal-delay-1"
+                style={{
+                  fontSize: 12,
+                  color: "var(--cream-dim)",
+                  letterSpacing: "2px",
+                  textTransform: "uppercase",
+                  marginBottom: 0,
+                }}
+              >
+                Choose the configuration that fits your vision
+              </div>
+              <div className="reveal reveal-delay-2 gw-options-grid">
+                <OptionColumn
+                  label="Option A"
+                  name={packageName}
+                  configKey={configKey}
+                  receptionStart={receptionStart}
+                  receptionEnd={receptionEnd}
+                  price={primaryPrice}
+                />
+                <OptionColumn
+                  label="Option B"
+                  name={upsellName}
+                  configKey={upsellConfigKey}
+                  receptionStart={receptionStart}
+                  receptionEnd={receptionEnd}
+                  price={upsellPrice}
+                />
+              </div>
+            </>
           ) : (
             /* ── SINGLE PACKAGE LAYOUT ── */
-            <div className="reveal reveal-delay-1">
-              <PackageContent
-                name={packageName}
-                configKey={configKey}
-                receptionStart={receptionStart}
-                receptionEnd={receptionEnd}
-              />
-            </div>
+            <>
+              <SectionLabel className="reveal">Your package</SectionLabel>
+              <div className="reveal reveal-delay-1">
+                <OptionColumn
+                  name={packageName}
+                  configKey={configKey}
+                  receptionStart={receptionStart}
+                  receptionEnd={receptionEnd}
+                  price={primaryPrice}
+                />
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -1066,130 +1094,7 @@ const ProposalPublic = ({ slug }) => {
         </div>
       </section>
 
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 5: INVESTMENT (single layout only) */}
-      {/* In dual layout, price is shown per package */}
-      {/* ════════════════════════════════════════ */}
-      {!hasUpsell && (
-        <>
-          <Divider />
-          <section style={{ padding: "80px 0" }}>
-            <div className="gw-section-content" style={contentStyle}>
-              <SectionLabel className="reveal">Investment</SectionLabel>
-
-              {/* Price row */}
-              <div
-                className="reveal reveal-delay-1"
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  padding: "28px 0",
-                  borderTop: "0.5px solid var(--border-med)",
-                  borderBottom: "0.5px solid var(--border-med)",
-                  marginBottom: 40,
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 10,
-                    letterSpacing: "3px",
-                    textTransform: "uppercase",
-                    color: "var(--cream-dim)",
-                  }}
-                >
-                  Total Investment
-                </div>
-                <div
-                  className="gw-price-amount"
-                  style={{
-                    fontFamily: "'Bodoni Moda', serif",
-                    fontSize: "clamp(28px, 7vw, 40px)",
-                    color: "var(--cream)",
-                    fontWeight: 400,
-                  }}
-                >
-                  {price}
-                </div>
-              </div>
-
-              {/* All inclusive */}
-              <div
-                className="reveal reveal-delay-2"
-                style={{
-                  fontSize: 13,
-                  color: "var(--cream-muted)",
-                  marginBottom: 32,
-                  fontWeight: 300,
-                }}
-              >
-                All inclusive
-              </div>
-
-              {/* Includes grid */}
-              <div
-                className="reveal reveal-delay-2 gw-includes-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: 12,
-                  marginBottom: 40,
-                }}
-              >
-                {[
-                  "Full PA and sound system",
-                  "Stage lighting package",
-                  "MC and emcee services",
-                  "Music during breaks and transitions",
-                  "Setup and breakdown",
-                  ...(hasCocktail ? ["Sound for cocktail hour"] : []),
-                ].map((item) => (
-                  <div
-                    key={item}
-                    style={{
-                      fontSize: 13,
-                      color: "var(--cream-muted)",
-                      padding: "12px 0",
-                      borderBottom: "0.5px solid var(--border)",
-                      fontWeight: 300,
-                    }}
-                  >
-                    {item}
-                  </div>
-                ))}
-              </div>
-
-              {/* Payment terms */}
-              <div
-                className="reveal reveal-delay-3"
-                style={{
-                  fontSize: 11,
-                  color: "var(--cream-faint)",
-                  lineHeight: 2,
-                  fontWeight: 300,
-                }}
-              >
-                <p>50% deposit to reserve your date</p>
-                <p>Balance due 30 days before event</p>
-              </div>
-
-              {/* Note */}
-              <div
-                className="reveal reveal-delay-4"
-                style={{
-                  fontSize: 11,
-                  color: "var(--cream-faint)",
-                  lineHeight: 1.8,
-                  marginTop: 28,
-                  fontWeight: 300,
-                }}
-              >
-                Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
-              </div>
-            </div>
-          </section>
-        </>
-      )}
+      {/* Investment is now integrated into each package column */}
 
       {/* ════════════════════════════════════════ */}
       {/* SECTION 5b: COCKTAIL HOUR OPTIONS        */}
@@ -1204,13 +1109,13 @@ const ProposalPublic = ({ slug }) => {
                 className="reveal reveal-delay-1"
                 style={{
                   fontFamily: "'Bodoni Moda', serif",
-                  fontSize: "clamp(24px, 5vw, 28px)",
+                  fontSize: 20,
                   color: "var(--cream)",
                   fontWeight: 400,
-                  marginBottom: 8,
+                  marginBottom: 16,
                 }}
               >
-                Set the Tone Early
+                Cocktail Hour
               </div>
               <div
                 className="reveal reveal-delay-1"
@@ -1220,10 +1125,12 @@ const ProposalPublic = ({ slug }) => {
                   lineHeight: 1.8,
                   fontWeight: 300,
                   marginBottom: 48,
-                  maxWidth: 480,
+                  maxWidth: 520,
                 }}
               >
-                Add live music to your cocktail hour for a seamless transition into the evening.
+                {hasCocktail
+                  ? `Your cocktail hour runs from ${cocktailStart} to ${cocktailEnd}. Live music during cocktails sets the tone before the reception begins. We offer acoustic arrangements tailored to the mood you want.`
+                  : "If you're planning a cocktail hour before the reception, live music sets the tone for everything that follows. We offer acoustic arrangements matched to the mood you want."}
               </div>
 
               <div
@@ -1238,38 +1145,26 @@ const ProposalPublic = ({ slug }) => {
                   <div
                     key={tier.key}
                     style={{
-                      border: "0.5px solid var(--border-med)",
-                      padding: "32px 24px",
+                      border: "0.5px solid var(--border-light)",
+                      padding: "24px 16px",
                       textAlign: "center",
                     }}
                   >
                     <div
                       style={{
-                        fontFamily: "'Bodoni Moda', serif",
-                        fontSize: 20,
-                        color: "var(--cream)",
-                        fontWeight: 400,
-                        marginBottom: 12,
+                        fontSize: 9,
+                        letterSpacing: "3px",
+                        textTransform: "uppercase",
+                        color: "var(--cream-dim)",
+                        marginBottom: 10,
                       }}
                     >
                       {tier.label}
                     </div>
                     <div
                       style={{
-                        fontSize: 12,
-                        color: "var(--cream-dim)",
-                        lineHeight: 1.7,
-                        fontWeight: 300,
-                        marginBottom: 24,
-                        minHeight: 40,
-                      }}
-                    >
-                      {tier.desc}
-                    </div>
-                    <div
-                      style={{
                         fontFamily: "'Bodoni Moda', serif",
-                        fontSize: 22,
+                        fontSize: "clamp(18px, 4vw, 22px)",
                         color: "var(--cream)",
                         fontWeight: 400,
                       }}
@@ -1316,13 +1211,11 @@ const ProposalPublic = ({ slug }) => {
             }}
           >
             {[
-              { label: "Couple", value: p2Full ? `${p1Full} & ${p2Full}` : p1Full },
+              { label: "Couple", value: p2First ? `${p1First} & ${p2First}` : p1First },
               { label: "Date", value: dateLong },
               { label: "Venue", value: venue },
               { label: "Event Type", value: "Wedding Reception" },
-              ...(hasCocktail
-                ? [{ label: "Cocktail Hour", value: `${cocktailStart} to ${cocktailEnd}` }]
-                : []),
+              { label: "Cocktail Hour", value: hasCocktail ? `${cocktailStart} to ${cocktailEnd}` : "Available upon request" },
               { label: "Reception", value: `${receptionStart} to ${receptionEnd}` },
               { label: "Configuration", value: packageName },
               { label: "Services", value: "Entertainment + MC" },
@@ -1333,7 +1226,7 @@ const ProposalPublic = ({ slug }) => {
                 style={{
                   padding: "24px 28px",
                   borderBottom: "0.5px solid var(--border)",
-                  borderRight: "0.5px solid var(--border)",
+                  borderRight: i % 2 === 0 ? "0.5px solid var(--border)" : "none",
                 }}
               >
                 <div

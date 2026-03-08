@@ -3,7 +3,6 @@ import { COLORS, FONTS, RADII } from "../tokens";
 import SlideOverPanel from "./SlideOverPanel";
 import Icon from "../icons";
 import { formatCurrency, parseCurrency } from "../utils/formatters";
-import { callClaude, getApiKey, hasApiKey } from "../utils/claudeApi";
 
 // ── Package pricing and tier logic ──
 const PACKAGE_OPTIONS = [
@@ -22,14 +21,38 @@ const PACKAGE_PRICES = {
   "14 Piece Band": 16875,
 };
 
-// Upsell tier: 6→10 (skip 8), 8→10, 10→12, 12→14, 14→null
+// Upsell tier: 6→10, 8→10, 10→14, 12→14, 14→null
 const UPSELL_TIER = {
   "6 Piece Band": "10 Piece Band",
   "8 Piece Band": "10 Piece Band",
-  "10 Piece Band": "12 Piece Band",
+  "10 Piece Band": "14 Piece Band",
   "12 Piece Band": "14 Piece Band",
   "14 Piece Band": null,
 };
+
+// ── Intro Templates ──
+const INTRO_TEMPLATES = [
+  {
+    id: 'standard',
+    label: 'Standard',
+    text: "We're looking forward to being part of your evening at {{VENUE}}. A {{CONFIG}} gives you the full range \u2014 vocalists, rhythm section, and enough energy to keep the room moving from start to finish.",
+  },
+  {
+    id: 'horns',
+    label: 'Horn Section Highlight',
+    text: "{{VENUE}} is the kind of room where a full band can really open up. The {{CONFIG}} brings a horn section that fills the space without overpowering it, and vocalists who know how to read a crowd.",
+  },
+  {
+    id: 'intimate',
+    label: 'Smaller Configuration',
+    text: "We love playing rooms like {{VENUE}}. A {{CONFIG}} keeps things tight and focused \u2014 every musician on that stage is pulling their weight, and the energy stays right where your guests are.",
+  },
+  {
+    id: 'custom',
+    label: 'Custom',
+    text: '',
+  },
+];
 
 const nameToConfig = (name) => {
   const num = name?.replace(/\D/g, "");
@@ -52,81 +75,23 @@ const formatTime12 = (time24) => {
   return `${h12}:${m} ${ampm}`;
 };
 
-// ── AI System Prompt (from spec Section 2.3) ──
-const AI_CONFIG_SYSTEM_PROMPT = `You are the proposal configuration engine for The Greenway Band, a premium live wedding band in Houston, TX.
-
-Given the lead data below, determine the optimal proposal configuration. Return ONLY valid JSON with no explanation.
-
-RULES:
-1. Always include the band size the lead requested as the primary package.
-2. Always include one tier up as the upsell package, unless the lead requested 14 piece (max).
-3. Never show a smaller band size than what the lead requested, unless their notes explicitly mention flexibility downward.
-4. The tier order is: 6, 8, 10, 12, 14. When upselling from 6, skip to 10 (the horn section is the real differentiator).
-5. If no band size is specified, recommend based on budget and guest count.
-6. Always include cocktail hour options.
-7. Generate a venue-specific intro paragraph. The tone is grounded, specific, and confident. Use contractions. Reference the venue by name. Do not use hyphens as dashes. Do not use exclamation points. Do not use generic phrases like "your special day" or "unforgettable evening." Do not mention price. 2 to 3 sentences.
-
-PRICING:
-- 6 Piece Band: $9,000
-- 8 Piece Band: $10,750
-- 10 Piece Band: $12,500
-- 12 Piece Band: $14,750
-- 14 Piece Band: $16,875
-- Cocktail Hour Solo: $1,250
-- Cocktail Hour Duo: $1,875
-- Cocktail Hour Trio: $2,500
-
-RESPONSE FORMAT:
-{
-  "primary_package": {
-    "name": "10 Piece Band",
-    "price": 12500,
-    "config": "10pc"
-  },
-  "upsell_package": {
-    "name": "14 Piece Band",
-    "price": 16875,
-    "config": "14pc"
-  },
-  "cocktail_options": ["solo", "duo", "trio"],
-  "intro_paragraph": "...",
-  "reasoning": "Lead requested 10 piece with $20K budget. Showing 14 piece upsell since budget supports it. All cocktail tiers shown."
-}
-
-If there should be no upsell (14 piece requested), set upsell_package to null.`;
-
-// Build AI user prompt from lead data (spec Section 2.4)
-const buildAiUserPrompt = (lead) => {
-  const dateLong = lead.event_date
-    ? new Date(lead.event_date + "T00:00:00").toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-    : "not specified";
-
-  return `Lead data:
-- Partner 1: ${lead.partner1_first || ""} ${lead.partner1_last || ""}
-- Partner 2: ${lead.partner2_first || ""} ${lead.partner2_last || ""}
-- Venue: ${lead.venue || "not specified"}
-- Event date: ${dateLong}
-- Guest count: ${lead.guest_count || "not specified"}
-- Budget stated: ${lead.budget_stated || "not specified"}
-- Cocktail interest: ${lead.cocktail_interest || "not specified"}
-- Band config requested: ${lead.config || "not specified"}
-- Event type: ${lead.event_type || "Wedding"}
-- Inquiry details: ${lead.inquiry_details || "none"}
-- Notes: ${lead.notes || "none"}`;
+// Resolve merge fields in a template
+const resolveTemplate = (templateText, venue, packageName) => {
+  if (!templateText) return "";
+  const configDisplay = packageName
+    ? packageName.toLowerCase().replace(" band", " band")
+    : "band";
+  return templateText
+    .replace(/\{\{VENUE\}\}/g, venue || "your venue")
+    .replace(/\{\{CONFIG\}\}/g, configDisplay);
 };
 
-// Intro-only system prompt for regeneration
-const INTRO_SYSTEM_PROMPT = `You are writing a proposal introduction for Adrian Michael, founder of The Greenway Band, a premium live wedding band in Houston, TX.
-
-Write a 2 to 3 sentence introduction paragraph for a wedding proposal. The tone is grounded, specific, and confident. It should read like Adrian wrote it, not a copywriter. Use contractions. Reference the venue by name and say something specific about why this band configuration fits the space or the evening.
-
-Do not use hyphens as dashes. Do not use exclamation points. Do not use generic phrases like "your special day" or "unforgettable evening." Do not mention price.
-
-Return ONLY the paragraph text. No quotes, no labels, no formatting.`;
+// Determine which template ID to auto-select based on config
+const getDefaultTemplateId = (packageName) => {
+  const num = parseInt(String(packageName || "").replace(/\D/g, ""), 10);
+  if (num >= 10) return 'horns';
+  return 'standard';
+};
 
 // ── Shared styles ──
 const inputStyle = {
@@ -218,7 +183,6 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
   const hasNewSchema = !!existingConfig.primary_package;
 
   // ── State ──
-  const [aiLoading, setAiLoading] = useState(false);
   const [primaryPackage, setPrimaryPackage] = useState("");
   const [primaryPrice, setPrimaryPrice] = useState("");
   const [showUpsell, setShowUpsell] = useState(false);
@@ -232,20 +196,20 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
   const [receptionEnd, setReceptionEnd] = useState("23:00");
   const [showCocktail, setShowCocktail] = useState(true);
   const [introParagraph, setIntroParagraph] = useState("");
-  const [aiReasoning, setAiReasoning] = useState("");
-  const [reasoningOpen, setReasoningOpen] = useState(false);
-  const [introLoading, setIntroLoading] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState("standard");
   const [generating, setGenerating] = useState(false);
   const [showStagePrompt, setShowStagePrompt] = useState(false);
   const [stageUpdating, setStageUpdating] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // ── Initialize from existing config or fire AI ──
+  // ── Initialize from existing config ──
   useEffect(() => {
+    let initPackage = "";
+
     if (hasNewSchema) {
-      // Populate from new schema
       const ec = existingConfig;
-      setPrimaryPackage(ec.primary_package.name);
+      initPackage = ec.primary_package.name;
+      setPrimaryPackage(initPackage);
       setPrimaryPrice(formatCurrency(ec.primary_package.price));
       if (ec.upsell_package) {
         setShowUpsell(true);
@@ -257,121 +221,79 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
       setReceptionStart(ec.reception_start_24 || "19:00");
       setReceptionEnd(ec.reception_end_24 || "23:00");
       setShowCocktail(ec.show_cocktail !== false);
-      setIntroParagraph(ec.intro_paragraph || "");
-      setAiReasoning(ec.ai_reasoning || "");
+
+      if (ec.intro_paragraph) {
+        setIntroParagraph(ec.intro_paragraph);
+        setSelectedTemplate("custom");
+      } else {
+        const defaultId = getDefaultTemplateId(initPackage);
+        setSelectedTemplate(defaultId);
+        const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
+        if (tpl) {
+          setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
+        }
+      }
     } else if (existingConfig.package_name) {
-      // Populate from old schema
-      setPrimaryPackage(existingConfig.package_name);
+      initPackage = existingConfig.package_name;
+      setPrimaryPackage(initPackage);
       setPrimaryPrice(lead.price != null ? formatCurrency(lead.price) : "");
       setCocktailStart(existingConfig.cocktail_start_24 || "");
       setCocktailEnd(existingConfig.cocktail_end_24 || "");
       setReceptionStart(existingConfig.reception_start_24 || "19:00");
       setReceptionEnd(existingConfig.reception_end_24 || "23:00");
-      setIntroParagraph(existingConfig.intro_paragraph || "");
+
+      if (existingConfig.intro_paragraph) {
+        setIntroParagraph(existingConfig.intro_paragraph);
+        setSelectedTemplate("custom");
+      } else {
+        const defaultId = getDefaultTemplateId(initPackage);
+        setSelectedTemplate(defaultId);
+        const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
+        if (tpl) {
+          setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
+        }
+      }
     } else {
-      // No existing config — pre-fill from lead data, then fire AI
+      // No existing config — pre-fill from lead data
       const leadConfig = lead.config;
       if (leadConfig) {
-        const name = configToName(leadConfig);
-        setPrimaryPackage(name);
-        if (PACKAGE_PRICES[name]) {
-          setPrimaryPrice(formatCurrency(PACKAGE_PRICES[name]));
+        initPackage = configToName(leadConfig);
+        setPrimaryPackage(initPackage);
+        if (PACKAGE_PRICES[initPackage]) {
+          setPrimaryPrice(formatCurrency(PACKAGE_PRICES[initPackage]));
         }
       }
       if (lead.price != null) {
         setPrimaryPrice(formatCurrency(lead.price));
       }
 
-      if (hasApiKey()) {
-        runAiConfig();
+      const defaultId = getDefaultTemplateId(initPackage);
+      setSelectedTemplate(defaultId);
+      const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
+      if (tpl) {
+        setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
       }
     }
   }, []);
 
-  // ── AI Config Call ──
-  const runAiConfig = async () => {
-    setAiLoading(true);
-    try {
-      const result = await callClaude({
-        systemPrompt: AI_CONFIG_SYSTEM_PROMPT,
-        userPrompt: buildAiUserPrompt(lead),
-        apiKey: getApiKey(),
-        maxTokens: 1000,
-      });
-
-      // Parse JSON from response (handle potential markdown code blocks)
-      let json;
-      try {
-        const cleaned = result
-          .replace(/```json?\n?/g, "")
-          .replace(/```/g, "")
-          .trim();
-        json = JSON.parse(cleaned);
-      } catch (parseErr) {
-        console.error("AI config JSON parse failed:", parseErr, result);
-        return;
-      }
-
-      // Populate fields from AI response
-      if (json.primary_package) {
-        setPrimaryPackage(json.primary_package.name);
-        setPrimaryPrice(formatCurrency(json.primary_package.price));
-      }
-      if (json.upsell_package) {
-        setShowUpsell(true);
-        setUpsellPackage(json.upsell_package.name);
-        setUpsellPrice(formatCurrency(json.upsell_package.price));
-      } else {
-        setShowUpsell(false);
-        setUpsellPackage("");
-        setUpsellPrice("");
-      }
-      if (json.cocktail_options) {
-        setShowCocktail(true);
-      }
-      if (json.intro_paragraph) {
-        setIntroParagraph(json.intro_paragraph);
-      }
-      if (json.reasoning) {
-        setAiReasoning(json.reasoning);
-      }
-    } catch (err) {
-      console.error("AI config call failed:", err);
-    } finally {
-      setAiLoading(false);
+  // ── Template selection handler ──
+  const handleTemplateSelect = (templateId) => {
+    setSelectedTemplate(templateId);
+    if (templateId === "custom") return;
+    const tpl = INTRO_TEMPLATES.find((t) => t.id === templateId);
+    if (tpl) {
+      setIntroParagraph(resolveTemplate(tpl.text, venue, primaryPackage));
     }
   };
 
-  // ── Regenerate intro only ──
-  const regenerateIntro = async () => {
-    if (!hasApiKey()) return;
-    setIntroLoading(true);
-    try {
-      const dateLong = eventDate
-        ? new Date(eventDate + "T00:00:00").toLocaleDateString("en-US", {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          })
-        : "";
-      const userPrompt = `Venue: ${venue || "TBD"}
-Configuration: ${primaryPackage || "TBD"}
-Guest count: ${lead.guest_count || "TBD"}
-Event date: ${dateLong || "TBD"}`;
-
-      const result = await callClaude({
-        systemPrompt: INTRO_SYSTEM_PROMPT,
-        userPrompt,
-        apiKey: getApiKey(),
-        maxTokens: 500,
-      });
-      setIntroParagraph(result);
-    } catch (err) {
-      console.error("AI intro regeneration failed:", err);
-    } finally {
-      setIntroLoading(false);
+  // ── Live-update intro when venue or package changes (if a non-custom template is active) ──
+  useEffect(() => {
+    if (selectedTemplate === "custom") return;
+    const tpl = INTRO_TEMPLATES.find((t) => t.id === selectedTemplate);
+    if (tpl) {
+      setIntroParagraph(resolveTemplate(tpl.text, venue, primaryPackage));
     }
-  };
+  }, [venue, primaryPackage, selectedTemplate]);
 
   // ── Package cascading ──
   const handlePrimaryChange = (name) => {
@@ -380,7 +302,6 @@ Event date: ${dateLong || "TBD"}`;
       PACKAGE_PRICES[name] ? formatCurrency(PACKAGE_PRICES[name]) : ""
     );
 
-    // Auto-adjust upsell
     const upsell = UPSELL_TIER[name];
     if (upsell) {
       if (showUpsell) {
@@ -388,7 +309,6 @@ Event date: ${dateLong || "TBD"}`;
         setUpsellPrice(formatCurrency(PACKAGE_PRICES[upsell]));
       }
     } else {
-      // 14 piece — no upsell available
       setShowUpsell(false);
       setUpsellPackage("");
       setUpsellPrice("");
@@ -419,7 +339,6 @@ Event date: ${dateLong || "TBD"}`;
     const upsellPriceRaw = parseCurrency(upsellPrice);
 
     return {
-      // New schema
       primary_package: {
         name: primaryPackage,
         price: primaryPriceRaw,
@@ -433,10 +352,13 @@ Event date: ${dateLong || "TBD"}`;
               config: nameToConfig(upsellPackage),
             }
           : null,
+      upsell_config:
+        showUpsell && upsellPackage
+          ? upsellPackage.replace(/\D/g, "") + " piece"
+          : null,
       cocktail_options: showCocktail ? ["solo", "duo", "trio"] : [],
       show_cocktail: showCocktail,
       intro_paragraph: introParagraph || null,
-      ai_reasoning: aiReasoning || null,
 
       // Backward compat fields (for existing ProposalPublic)
       package_name: primaryPackage,
@@ -458,7 +380,6 @@ Event date: ${dateLong || "TBD"}`;
       const configOverride = buildConfigOverride();
       const primaryPriceRaw = parseCurrency(primaryPrice);
 
-      // Update lead fields if changed
       const leadUpdates = {};
       if (primaryPriceRaw && primaryPriceRaw !== lead.price)
         leadUpdates.price = primaryPriceRaw;
@@ -471,11 +392,15 @@ Event date: ${dateLong || "TBD"}`;
       if (newConfig && newConfig !== lead.config) leadUpdates.config = newConfig;
 
       if (Object.keys(leadUpdates).length > 0) {
-        await onUpdateLead(lead.id, leadUpdates);
+        try {
+          await onUpdateLead(lead.id, leadUpdates);
+        } catch (updateErr) {
+          console.error("Lead field update failed:", updateErr);
+          throw new Error(`Lead update failed: ${updateErr.message}`);
+        }
       }
 
       if (hasExisting) {
-        // Update existing proposal config
         await onUpdateLead(lead.id, {
           proposal_config_override: configOverride,
         });
@@ -484,7 +409,6 @@ Event date: ${dateLong || "TBD"}`;
         setToast("Proposal link copied");
         setTimeout(() => setToast(null), 2500);
       } else {
-        // Generate new proposal
         const result = await onGenerate(lead.id, configOverride);
         if (result?.url) {
           await navigator.clipboard.writeText(result.url);
@@ -495,8 +419,9 @@ Event date: ${dateLong || "TBD"}`;
       }
     } catch (err) {
       console.error("Proposal generation failed:", err);
-      setToast("Failed to generate proposal");
-      setTimeout(() => setToast(null), 2500);
+      const msg = err?.message || err?.details || String(err);
+      setToast(`Failed: ${msg.slice(0, 80)}`);
+      setTimeout(() => setToast(null), 5000);
     } finally {
       setGenerating(false);
     }
@@ -529,153 +454,126 @@ Event date: ${dateLong || "TBD"}`;
       subtitle={`${lead.partner1_first || ""}${lead.partner2_first ? ` & ${lead.partner2_first}` : ""} | ${lead.venue || "No venue"}`}
       onClose={onClose}
     >
-      {/* AI Loading State */}
-      {aiLoading && (
-        <div style={{ padding: "40px 20px", textAlign: "center" }}>
+      {/* Existing proposal URL */}
+      {hasExisting && existingUrl && (
+        <div
+          style={{
+            padding: "12px 14px",
+            background: COLORS.bg,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: RADII.sm,
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Icon type="link" size={14} color={COLORS.textMuted} />
           <div
             style={{
-              width: 32,
-              height: 32,
-              border: `2px solid ${COLORS.borderLight}`,
-              borderTopColor: COLORS.black,
-              borderRadius: "50%",
-              animation: "spin 0.8s linear infinite",
-              margin: "0 auto 16px",
-            }}
-          />
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              color: COLORS.text,
-              fontFamily: FONTS.body,
-              marginBottom: 4,
-            }}
-          >
-            Building proposal...
-          </div>
-          <div
-            style={{
+              flex: 1,
               fontSize: 12,
-              color: COLORS.textLight,
-              fontFamily: FONTS.body,
+              color: COLORS.textMuted,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
-            AI is analyzing lead data
+            {existingUrl}
           </div>
+          <button
+            onClick={async () => {
+              await navigator.clipboard.writeText(existingUrl);
+              setToast("Link copied");
+              setTimeout(() => setToast(null), 2000);
+            }}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="Copy link"
+          >
+            <Icon type="copy" size={14} color={COLORS.textMuted} />
+          </button>
         </div>
       )}
 
-      {/* Main form (hidden while AI loading) */}
-      {!aiLoading && (
+      {/* ── PRIMARY PACKAGE ── */}
+      <FormField label="Primary Package">
+        <select
+          style={selectStyle}
+          value={primaryPackage}
+          onChange={(e) => handlePrimaryChange(e.target.value)}
+        >
+          <option value="">Select...</option>
+          {PACKAGE_OPTIONS.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.value}
+            </option>
+          ))}
+        </select>
+      </FormField>
+
+      <FormField label="Primary Price">
+        <input
+          style={inputStyle}
+          type="text"
+          value={primaryPrice}
+          onChange={(e) =>
+            setPrimaryPrice(e.target.value.replace(/[^\d]/g, ""))
+          }
+          onBlur={() => setPrimaryPrice(formatCurrency(primaryPrice))}
+          onFocus={() => {
+            const raw = parseCurrency(primaryPrice);
+            setPrimaryPrice(raw ? String(raw) : "");
+          }}
+          placeholder="$0"
+        />
+      </FormField>
+
+      {/* ── UPSELL TOGGLE + PACKAGE ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: showUpsell ? 16 : 20,
+        }}
+      >
+        <label
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: is14Piece ? COLORS.textLight : COLORS.textMuted,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Show Upsell Package
+        </label>
+        <ToggleSwitch
+          checked={showUpsell}
+          onChange={handleUpsellToggle}
+          disabled={is14Piece}
+        />
+      </div>
+
+      {showUpsell && (
         <>
-          {/* Existing proposal URL */}
-          {hasExisting && existingUrl && (
-            <div
-              style={{
-                padding: "12px 14px",
-                background: COLORS.bg,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: RADII.sm,
-                marginBottom: 20,
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-              }}
-            >
-              <Icon type="link" size={14} color={COLORS.textMuted} />
-              <div
-                style={{
-                  flex: 1,
-                  fontSize: 12,
-                  color: COLORS.textMuted,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {existingUrl}
-              </div>
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(existingUrl);
-                  setToast("Link copied");
-                  setTimeout(() => setToast(null), 2000);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  padding: 4,
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                title="Copy link"
-              >
-                <Icon type="copy" size={14} color={COLORS.textMuted} />
-              </button>
-            </div>
-          )}
-
-          {/* Re-analyze with AI button */}
-          {hasApiKey() && (
-            <button
-              onClick={runAiConfig}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: "none",
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: RADII.sm,
-                padding: "8px 14px",
-                fontSize: 12,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                cursor: "pointer",
-                fontFamily: FONTS.body,
-                marginBottom: 20,
-                transition: "border-color 0.15s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.borderColor = COLORS.textLight)
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.borderColor = COLORS.border)
-              }
-            >
-              <Icon type="spark" size={13} color={COLORS.textMuted} />
-              Re-analyze with AI
-            </button>
-          )}
-
-          {/* No API key notice */}
-          {!hasApiKey() && (
-            <div
-              style={{
-                padding: "12px 14px",
-                fontSize: 12,
-                color: COLORS.textLight,
-                background: COLORS.bg,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: RADII.sm,
-                lineHeight: 1.5,
-                marginBottom: 20,
-              }}
-            >
-              Add your Claude API key in Settings to enable AI auto-configuration.
-            </div>
-          )}
-
-          {/* ── PRIMARY PACKAGE ── */}
-          <FormField label="Primary Package">
+          <FormField label="Upsell Package">
             <select
               style={selectStyle}
-              value={primaryPackage}
-              onChange={(e) => handlePrimaryChange(e.target.value)}
+              value={upsellPackage}
+              onChange={(e) => handleUpsellChange(e.target.value)}
             >
               <option value="">Select...</option>
-              {PACKAGE_OPTIONS.map((p) => (
+              {PACKAGE_OPTIONS.filter(
+                (p) => p.value !== primaryPackage
+              ).map((p) => (
                 <option key={p.value} value={p.value}>
                   {p.value}
                 </option>
@@ -683,376 +581,276 @@ Event date: ${dateLong || "TBD"}`;
             </select>
           </FormField>
 
-          <FormField label="Primary Price">
+          <FormField label="Upsell Price">
             <input
               style={inputStyle}
               type="text"
-              value={primaryPrice}
+              value={upsellPrice}
               onChange={(e) =>
-                setPrimaryPrice(e.target.value.replace(/[^\d]/g, ""))
+                setUpsellPrice(e.target.value.replace(/[^\d]/g, ""))
               }
-              onBlur={() => setPrimaryPrice(formatCurrency(primaryPrice))}
+              onBlur={() => setUpsellPrice(formatCurrency(upsellPrice))}
               onFocus={() => {
-                const raw = parseCurrency(primaryPrice);
-                setPrimaryPrice(raw ? String(raw) : "");
+                const raw = parseCurrency(upsellPrice);
+                setUpsellPrice(raw ? String(raw) : "");
               }}
               placeholder="$0"
             />
           </FormField>
+        </>
+      )}
 
-          {/* ── UPSELL TOGGLE + PACKAGE ── */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: showUpsell ? 16 : 20,
-            }}
-          >
-            <label
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: is14Piece ? COLORS.textLight : COLORS.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Show Upsell Package
-            </label>
-            <ToggleSwitch
-              checked={showUpsell}
-              onChange={handleUpsellToggle}
-              disabled={is14Piece}
-            />
-          </div>
+      <SectionDivider />
 
-          {showUpsell && (
-            <>
-              <FormField label="Upsell Package">
-                <select
-                  style={selectStyle}
-                  value={upsellPackage}
-                  onChange={(e) => handleUpsellChange(e.target.value)}
-                >
-                  <option value="">Select...</option>
-                  {PACKAGE_OPTIONS.filter(
-                    (p) => p.value !== primaryPackage
-                  ).map((p) => (
-                    <option key={p.value} value={p.value}>
-                      {p.value}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
+      {/* ── EVENT DATE + VENUE ── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+        }}
+      >
+        <FormField label="Event Date">
+          <input
+            style={inputStyle}
+            type="date"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Venue">
+          <input
+            style={inputStyle}
+            value={venue}
+            onChange={(e) => setVenue(e.target.value)}
+          />
+        </FormField>
+      </div>
 
-              <FormField label="Upsell Price">
-                <input
-                  style={inputStyle}
-                  type="text"
-                  value={upsellPrice}
-                  onChange={(e) =>
-                    setUpsellPrice(e.target.value.replace(/[^\d]/g, ""))
-                  }
-                  onBlur={() => setUpsellPrice(formatCurrency(upsellPrice))}
-                  onFocus={() => {
-                    const raw = parseCurrency(upsellPrice);
-                    setUpsellPrice(raw ? String(raw) : "");
-                  }}
-                  placeholder="$0"
-                />
-              </FormField>
-            </>
-          )}
+      {/* ── COCKTAIL TIMES ── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+        }}
+      >
+        <FormField label="Cocktail Hour Start">
+          <input
+            style={inputStyle}
+            type="time"
+            value={cocktailStart}
+            onChange={(e) => setCocktailStart(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Cocktail Hour End">
+          <input
+            style={inputStyle}
+            type="time"
+            value={cocktailEnd}
+            onChange={(e) => setCocktailEnd(e.target.value)}
+          />
+        </FormField>
+      </div>
 
-          <SectionDivider />
+      {/* ── RECEPTION TIMES ── */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 12,
+        }}
+      >
+        <FormField label="Reception Start">
+          <input
+            style={inputStyle}
+            type="time"
+            value={receptionStart}
+            onChange={(e) => setReceptionStart(e.target.value)}
+          />
+        </FormField>
+        <FormField label="Reception End">
+          <input
+            style={inputStyle}
+            type="time"
+            value={receptionEnd}
+            onChange={(e) => setReceptionEnd(e.target.value)}
+          />
+        </FormField>
+      </div>
 
-          {/* ── EVENT DATE + VENUE ── */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
-          >
-            <FormField label="Event Date">
-              <input
-                style={inputStyle}
-                type="date"
-                value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Venue">
-              <input
-                style={inputStyle}
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-              />
-            </FormField>
-          </div>
+      <SectionDivider />
 
-          {/* ── COCKTAIL TIMES ── */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
-          >
-            <FormField label="Cocktail Hour Start">
-              <input
-                style={inputStyle}
-                type="time"
-                value={cocktailStart}
-                onChange={(e) => setCocktailStart(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Cocktail Hour End">
-              <input
-                style={inputStyle}
-                type="time"
-                value={cocktailEnd}
-                onChange={(e) => setCocktailEnd(e.target.value)}
-              />
-            </FormField>
-          </div>
+      {/* ── COCKTAIL OPTIONS TOGGLE ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 20,
+        }}
+      >
+        <label
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: COLORS.textMuted,
+            textTransform: "uppercase",
+            letterSpacing: "0.04em",
+          }}
+        >
+          Show Cocktail Options
+        </label>
+        <ToggleSwitch checked={showCocktail} onChange={setShowCocktail} />
+      </div>
 
-          {/* ── RECEPTION TIMES ── */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 12,
-            }}
-          >
-            <FormField label="Reception Start">
-              <input
-                style={inputStyle}
-                type="time"
-                value={receptionStart}
-                onChange={(e) => setReceptionStart(e.target.value)}
-              />
-            </FormField>
-            <FormField label="Reception End">
-              <input
-                style={inputStyle}
-                type="time"
-                value={receptionEnd}
-                onChange={(e) => setReceptionEnd(e.target.value)}
-              />
-            </FormField>
-          </div>
+      <SectionDivider />
 
-          <SectionDivider />
-
-          {/* ── COCKTAIL OPTIONS TOGGLE ── */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <label
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: COLORS.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Show Cocktail Options
-            </label>
-            <ToggleSwitch checked={showCocktail} onChange={setShowCocktail} />
-          </div>
-
-          <SectionDivider />
-
-          {/* ── INTRO PARAGRAPH ── */}
-          <FormField label="Intro Paragraph">
-            <textarea
-              style={{
-                ...inputStyle,
-                minHeight: 100,
-                resize: "vertical",
-                lineHeight: 1.6,
-                opacity: introLoading ? 0.6 : 1,
-              }}
-              value={introLoading ? "Generating..." : introParagraph}
-              onChange={(e) => setIntroParagraph(e.target.value)}
-              disabled={introLoading}
-              placeholder="AI generated intro will appear here..."
-            />
-          </FormField>
-
-          {/* Regenerate Intro */}
-          {hasApiKey() && (
+      {/* ── INTRO TEMPLATE SELECTOR ── */}
+      <FormField label="Intro Template">
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            marginBottom: 10,
+          }}
+        >
+          {INTRO_TEMPLATES.map((tpl) => (
             <button
-              onClick={regenerateIntro}
-              disabled={introLoading}
+              key={tpl.id}
+              onClick={() => handleTemplateSelect(tpl.id)}
               style={{
-                background: "none",
-                border: "none",
+                padding: "5px 12px",
+                fontSize: 11,
+                fontWeight: selectedTemplate === tpl.id ? 600 : 500,
+                fontFamily: FONTS.body,
+                color:
+                  selectedTemplate === tpl.id ? COLORS.white : COLORS.textMuted,
+                background:
+                  selectedTemplate === tpl.id ? COLORS.black : COLORS.bg,
+                border: `1px solid ${
+                  selectedTemplate === tpl.id
+                    ? COLORS.black
+                    : COLORS.border
+                }`,
+                borderRadius: RADII.pill,
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              {tpl.label}
+            </button>
+          ))}
+        </div>
+      </FormField>
+
+      {/* ── INTRO PARAGRAPH ── */}
+      <FormField label="Intro Paragraph">
+        <textarea
+          style={{
+            ...inputStyle,
+            minHeight: 100,
+            resize: "vertical",
+            lineHeight: 1.6,
+          }}
+          value={introParagraph}
+          onChange={(e) => {
+            setIntroParagraph(e.target.value);
+            if (selectedTemplate !== "custom") {
+              setSelectedTemplate("custom");
+            }
+          }}
+          placeholder="Write a venue-specific intro paragraph..."
+        />
+      </FormField>
+
+      {/* ── GENERATE BUTTON ── */}
+      <button
+        onClick={handleGenerate}
+        disabled={generating || !primaryPackage}
+        style={{
+          width: "100%",
+          padding: "13px 20px",
+          background: COLORS.black,
+          color: COLORS.cream,
+          border: "none",
+          borderRadius: RADII.sm,
+          fontSize: 13,
+          fontWeight: 600,
+          cursor:
+            generating || !primaryPackage ? "not-allowed" : "pointer",
+          fontFamily: FONTS.body,
+          opacity: generating || !primaryPackage ? 0.7 : 1,
+          transition: "opacity 0.15s",
+        }}
+      >
+        {generating
+          ? "Generating..."
+          : hasExisting
+          ? "Update & Copy Link"
+          : "Generate & Copy Link"}
+      </button>
+
+      {/* Stage update prompt */}
+      {showStagePrompt && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: "12px 14px",
+            background: COLORS.bg,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: RADII.sm,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 12.5,
+              color: COLORS.textMuted,
+              fontWeight: 500,
+            }}
+          >
+            Move to Proposal Sent?
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => handleStageUpdate(true)}
+              disabled={stageUpdating}
+              style={{
+                padding: "5px 14px",
                 fontSize: 12,
                 fontWeight: 600,
-                color: introLoading ? COLORS.textLight : COLORS.textMuted,
-                cursor: introLoading ? "not-allowed" : "pointer",
+                color: COLORS.white,
+                background: COLORS.black,
+                border: "none",
+                borderRadius: RADII.sm,
+                cursor: "pointer",
                 fontFamily: FONTS.body,
-                padding: 0,
-                marginTop: -8,
-                marginBottom: 20,
               }}
             >
-              {introLoading ? "Generating..." : "Regenerate Intro"}
+              {stageUpdating ? "..." : "Yes"}
             </button>
-          )}
-
-          {/* ── AI REASONING (collapsed) ── */}
-          {aiReasoning && (
-            <div style={{ marginBottom: 20 }}>
-              <button
-                onClick={() => setReasoningOpen(!reasoningOpen)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: COLORS.textLight,
-                  cursor: "pointer",
-                  fontFamily: FONTS.body,
-                  padding: 0,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    transform: reasoningOpen
-                      ? "rotate(90deg)"
-                      : "rotate(0deg)",
-                    transition: "transform 0.15s",
-                    fontSize: 10,
-                  }}
-                >
-                  ▶
-                </span>
-                AI Reasoning
-              </button>
-              {reasoningOpen && (
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: "10px 14px",
-                    background: COLORS.bg,
-                    border: `1px solid ${COLORS.borderLight}`,
-                    borderRadius: RADII.sm,
-                    fontSize: 12,
-                    color: COLORS.textLight,
-                    lineHeight: 1.6,
-                    fontFamily: FONTS.body,
-                  }}
-                >
-                  {aiReasoning}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ── GENERATE BUTTON ── */}
-          <button
-            onClick={handleGenerate}
-            disabled={generating || !primaryPackage}
-            style={{
-              width: "100%",
-              padding: "13px 20px",
-              background: COLORS.black,
-              color: COLORS.cream,
-              border: "none",
-              borderRadius: RADII.sm,
-              fontSize: 13,
-              fontWeight: 600,
-              cursor:
-                generating || !primaryPackage ? "not-allowed" : "pointer",
-              fontFamily: FONTS.body,
-              opacity: generating || !primaryPackage ? 0.7 : 1,
-              transition: "opacity 0.15s",
-            }}
-          >
-            {generating
-              ? "Generating..."
-              : hasExisting
-              ? "Update & Copy Link"
-              : "Generate & Copy Link"}
-          </button>
-
-          {/* Stage update prompt */}
-          {showStagePrompt && (
-            <div
+            <button
+              onClick={() => handleStageUpdate(false)}
               style={{
-                marginTop: 14,
-                padding: "12px 14px",
-                background: COLORS.bg,
+                padding: "5px 14px",
+                fontSize: 12,
+                fontWeight: 600,
+                color: COLORS.textMuted,
+                background: COLORS.white,
                 border: `1px solid ${COLORS.border}`,
                 borderRadius: RADII.sm,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
+                cursor: "pointer",
+                fontFamily: FONTS.body,
               }}
             >
-              <span
-                style={{
-                  fontSize: 12.5,
-                  color: COLORS.textMuted,
-                  fontWeight: 500,
-                }}
-              >
-                Move to Proposal Sent?
-              </span>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={() => handleStageUpdate(true)}
-                  disabled={stageUpdating}
-                  style={{
-                    padding: "5px 14px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: COLORS.white,
-                    background: COLORS.black,
-                    border: "none",
-                    borderRadius: RADII.sm,
-                    cursor: "pointer",
-                    fontFamily: FONTS.body,
-                  }}
-                >
-                  {stageUpdating ? "..." : "Yes"}
-                </button>
-                <button
-                  onClick={() => handleStageUpdate(false)}
-                  style={{
-                    padding: "5px 14px",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: COLORS.textMuted,
-                    background: COLORS.white,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: RADII.sm,
-                    cursor: "pointer",
-                    fontFamily: FONTS.body,
-                  }}
-                >
-                  Not now
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+              Not now
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Toast */}
