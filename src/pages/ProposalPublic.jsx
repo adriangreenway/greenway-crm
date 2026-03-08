@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
-// ── Band configurations: grouped roles with counts (matching gold standard) ──
+// ── Band configurations: grouped roles with counts ──
 const BAND_CONFIGS = {
   '6 piece': [
     { role: 'Vocals', count: 2 },
@@ -49,26 +49,8 @@ const INCLUDED_SERVICES = [
   "Sound Equipment and Engineer",
   "Lighting Equipment and Engineer",
   "Emcee Services",
-  "Personalized First Dances",
+  "Personalized First Dance",
   "Song Requests",
-];
-
-const TESTIMONIALS = [
-  {
-    quote: "From the first song to the last, our guests could not stop dancing. Adrian and his team read the room perfectly and kept the energy going all night.",
-    couple: "Jessica & Mark",
-    venue: "The Bell Tower on 34th",
-  },
-  {
-    quote: "We still have guests telling us it was the best wedding they have ever been to. The band made it feel like a real party, not just a reception.",
-    couple: "Lauren & David",
-    venue: "The Astorian",
-  },
-  {
-    quote: "The Greenway Band was the single best investment we made for our wedding. They brought the energy, the talent, and the professionalism we were looking for.",
-    couple: "Priya & James",
-    venue: "Hotel Granduca",
-  },
 ];
 
 // ── Helpers ──
@@ -103,6 +85,11 @@ const getDisplayName = (key) => {
   return num ? `${num} Piece Band` : key;
 };
 
+const getPieceNumber = (key) => {
+  const num = String(key).replace(/\D/g, "");
+  return num ? parseInt(num, 10) : 10;
+};
+
 const hasHornSection = (key) => {
   const musicians = BAND_CONFIGS[key];
   if (!musicians) return false;
@@ -126,7 +113,7 @@ const formatTime = (time) => {
   return `${h12}:${m} ${ampm}`;
 };
 
-// ── Injected CSS (matches template exactly) ──
+// ── Injected CSS ──
 const PROPOSAL_CSS = `
   .gw-proposal * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -140,7 +127,6 @@ const PROPOSAL_CSS = `
     --cream-faint: #5A5750;
     --border: rgba(245,242,237,0.08);
     --border-light: rgba(245,242,237,0.12);
-    --border-med: rgba(245,242,237,0.18);
     font-family: 'Plus Jakarta Sans', sans-serif;
     background: var(--black);
     color: var(--cream);
@@ -166,25 +152,227 @@ const PROPOSAL_CSS = `
   .gw-proposal .reveal-delay-4 { transition-delay: 0.4s; }
   .gw-proposal .reveal-delay-5 { transition-delay: 0.5s; }
 
-  /* Scroll indicator */
-  @keyframes gwScrollPulse {
-    0%, 100% { opacity: 1; transform: translateX(-50%) translateY(0); }
-    50% { opacity: 0.5; transform: translateX(-50%) translateY(4px); }
-  }
-
   /* Skeleton pulse */
   @keyframes gwPulse {
     0%, 100% { opacity: 0.3; }
     50% { opacity: 0.15; }
   }
 
-  /* Instrument list */
-  .gw-proposal .gw-instrument-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+  /* Section content wrapper */
+  .gw-proposal .section-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 40px;
   }
-  .gw-proposal .gw-instrument-list li {
+
+  /* Section divider */
+  .gw-proposal .section-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  /* Section label */
+  .gw-proposal .section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 32px;
+  }
+
+  /* Cover */
+  .gw-proposal .cover {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px 40px;
+    position: relative;
+  }
+  .gw-proposal .cover-rule {
+    width: 60px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto;
+  }
+  .gw-proposal .cover-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 12px;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-top: 40px;
+    text-indent: 10px;
+  }
+  .gw-proposal .cover-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(28px, 8vw, 42px);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 4px 0;
+    font-weight: 400;
+    text-indent: 5px;
+  }
+  .gw-proposal .cover-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    letter-spacing: 14px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    font-weight: 400;
+    text-indent: 14px;
+  }
+  .gw-proposal .cover-descriptor {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--cream-dim);
+    margin-top: 24px;
+    letter-spacing: 1.5px;
+  }
+  .gw-proposal .cover-couple {
+    margin-top: 80px;
+    text-align: center;
+  }
+  .gw-proposal .cover-prepared {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 16px;
+  }
+  .gw-proposal .cover-couple-names {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(22px, 6vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .gw-proposal .cover-couple-names em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--cream-muted);
+    font-size: 0.78em;
+  }
+  .gw-proposal .cover-details {
+    margin-top: 24px;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    line-height: 2;
+  }
+  .gw-proposal .cover-footer {
+    position: absolute;
+    bottom: 48px;
+    left: 0;
+    right: 0;
+    text-align: center;
+  }
+  .gw-proposal .cover-footer p {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    opacity: 0.6;
+  }
+
+  /* Intro */
+  .gw-proposal .intro { padding: 80px 0; }
+  .gw-proposal .intro-greeting {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 32px);
+    color: var(--cream);
+    font-weight: 400;
+    line-height: 1.3;
+    margin-bottom: 40px;
+  }
+  .gw-proposal .intro-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--cream-muted);
+    max-width: 540px;
+  }
+  .gw-proposal .intro-body p { margin-bottom: 20px; }
+  .gw-proposal .intro-body p:last-child { margin-bottom: 0; }
+  .gw-proposal .intro-signature {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 0.5px solid var(--border-light);
+  }
+  .gw-proposal .intro-signature .sig-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 16px;
+    color: var(--cream);
+    margin-bottom: 4px;
+  }
+  .gw-proposal .intro-signature .sig-title {
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Package / Options */
+  .gw-proposal .package-section { padding: 80px 0; }
+  .gw-proposal .package-section .section-content { max-width: 840px; }
+  .gw-proposal .package-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .package-subtitle {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+  }
+  .gw-proposal .options-grid > div {
+    display: flex;
+    flex-direction: column;
+  }
+  .gw-proposal .options-grid .price-block { margin-top: auto; }
+  .gw-proposal .option-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .option-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 22px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+  .gw-proposal .option-subtitle {
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+  .gw-proposal .pkg-section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 20px;
+  }
+  .gw-proposal .instrument-list { list-style: none; }
+  .gw-proposal .instrument-list li {
     font-size: 14px;
     color: var(--cream-muted);
     padding: 10px 0;
@@ -192,224 +380,309 @@ const PROPOSAL_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-weight: 300;
   }
-  .gw-proposal .gw-instrument-list li:last-child {
-    border-bottom: none;
-  }
-  .gw-proposal .gw-instrument-list li .gw-count {
+  .gw-proposal .instrument-list li:last-child { border-bottom: none; }
+  .gw-proposal .instrument-list li .count {
     font-size: 11px;
     color: var(--cream-faint);
     letter-spacing: 1px;
   }
-
-  /* Services list */
-  .gw-proposal .gw-services-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-  .gw-proposal .gw-services-list li {
+  .gw-proposal .services-list { list-style: none; }
+  .gw-proposal .services-list li {
     font-size: 13px;
     color: var(--cream-muted);
-    padding: 10px 0;
+    padding: 8px 0;
     border-bottom: 0.5px solid var(--border);
-    font-weight: 300;
   }
-  .gw-proposal .gw-services-list li:last-child {
-    border-bottom: none;
-  }
-
-  /* Option column labels */
-  .gw-proposal .gw-option-label {
-    font-size: 9px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-    margin-bottom: 12px;
-  }
-  .gw-proposal .gw-option-title {
-    font-family: 'Bodoni Moda', serif;
-    font-size: 22px;
-    color: var(--cream);
-    font-weight: 400;
-    margin-bottom: 4px;
-  }
-  .gw-proposal .gw-option-subtitle {
-    font-size: 11px;
-    color: var(--cream-dim);
-    letter-spacing: 1px;
-    margin-bottom: 32px;
-  }
-  .gw-proposal .gw-col-label {
-    font-size: 9px;
-    letter-spacing: 4px;
-    text-transform: uppercase;
-    color: var(--cream-faint);
-    margin-bottom: 16px;
-  }
-  .gw-proposal .gw-price-row {
+  .gw-proposal .services-list li:last-child { border-bottom: none; }
+  .gw-proposal .price-row {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    padding: 24px 0;
+    padding: 32px 0;
     border-top: 0.5px solid var(--border-light);
     border-bottom: 0.5px solid var(--border-light);
     margin-top: 24px;
   }
-  .gw-proposal .gw-price-label {
-    font-size: 10px;
+  .gw-proposal .price-label {
+    font-size: 11px;
     letter-spacing: 3px;
     text-transform: uppercase;
     color: var(--cream-dim);
   }
-  .gw-proposal .gw-option-price {
+  .gw-proposal .price-amount {
     font-family: 'Bodoni Moda', serif;
-    font-size: 28px;
+    font-size: clamp(28px, 5vw, 36px);
     color: var(--cream);
     font-weight: 400;
   }
-  .gw-proposal .gw-option-note {
+  .gw-proposal .package-note {
     font-size: 11px;
     color: var(--cream-faint);
     line-height: 1.8;
-    margin-top: 16px;
-    font-weight: 300;
+    margin-top: 24px;
   }
 
-  /* Responsive */
-  @media (max-width: 600px) {
-    .gw-proposal .gw-details-grid { grid-template-columns: 1fr !important; }
-    .gw-proposal .gw-detail-cell { border-right: none !important; }
-    .gw-proposal .gw-cover-names { font-size: 24px !important; }
-    .gw-proposal .gw-section-content { padding: 0 24px !important; }
-    .gw-proposal .gw-cover { padding: 48px 24px !important; }
-    .gw-proposal .gw-price-amount { font-size: 32px !important; }
-    .gw-proposal .gw-option-price { font-size: 24px !important; }
-    .gw-proposal .gw-package-title { font-size: 24px !important; }
-    .gw-proposal .gw-greeting { font-size: 22px !important; }
-    .gw-proposal .gw-includes-grid { grid-template-columns: 1fr !important; }
+  /* Single-package two-column grid (A/B) */
+  .gw-proposal .single-pkg-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
   }
 
+  /* Event Details */
+  .gw-proposal .details-section { padding: 80px 0; }
+  .gw-proposal .details-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 0.5px solid var(--border-light);
+    border-radius: 2px;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .detail-cell {
+    padding: 28px 32px;
+    border-bottom: 0.5px solid var(--border);
+    border-right: 0.5px solid var(--border);
+  }
+  .gw-proposal .detail-cell:nth-child(even) { border-right: none; }
+  .gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .gw-proposal .detail-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 8px;
+  }
+  .gw-proposal .detail-value {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 16px;
+    color: var(--cream);
+    font-weight: 400;
+  }
+
+  /* Cocktail Hour Add-On */
+  .gw-proposal .addon-section {
+    margin-top: 8px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--border-light);
+  }
+  .gw-proposal .addon-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 20px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .addon-desc {
+    font-size: 13px;
+    color: var(--cream-dim);
+    line-height: 1.7;
+    margin-bottom: 28px;
+    max-width: 480px;
+  }
+  .gw-proposal .addon-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+  .gw-proposal .addon-card {
+    padding: 24px;
+    border: 0.5px solid var(--border-light);
+    border-radius: 2px;
+    text-align: center;
+  }
+  .gw-proposal .addon-card .addon-type {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .addon-card .addon-price {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 22px;
+    color: var(--cream);
+  }
+
+  /* Testimonials */
+  .gw-proposal .testimonials-section { padding: 80px 0; }
+  .gw-proposal .testimonial-block { margin-bottom: 48px; }
+  .gw-proposal .testimonial-block:last-of-type { margin-bottom: 0; }
+  .gw-proposal .testimonial-quote-mark {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 64px;
+    color: var(--cream-faint);
+    line-height: 0.5;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .gw-proposal .testimonial-text {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(16px, 3.5vw, 18px);
+    font-style: italic;
+    color: var(--cream);
+    line-height: 1.7;
+    max-width: 520px;
+    margin-bottom: 20px;
+  }
+  .gw-proposal .testimonial-stars {
+    color: var(--cream-dim);
+    font-size: 12px;
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+  }
+  .gw-proposal .testimonial-attr {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+  }
+  .gw-proposal .testimonial-divider {
+    width: 40px;
+    height: 0.5px;
+    background: var(--border-light);
+    margin: 40px 0;
+  }
+
+  /* Next Steps */
+  .gw-proposal .steps-section { padding: 80px 0; }
+  .gw-proposal .step-block {
+    padding-bottom: 36px;
+    border-bottom: 0.5px solid var(--border-light);
+    margin-bottom: 36px;
+  }
+  .gw-proposal .step-block:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .gw-proposal .step-number {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .step-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 20px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .step-desc {
+    font-size: 13px;
+    color: var(--cream-dim);
+    line-height: 1.6;
+  }
+  .gw-proposal .steps-contact {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 0.5px solid var(--border-light);
+    text-align: center;
+  }
+  .gw-proposal .steps-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.4;
+  }
+
+  /* Closing */
+  .gw-proposal .closing {
+    padding: 100px 40px 80px;
+    text-align: center;
+  }
+  .gw-proposal .closing-phrase {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: clamp(22px, 5vw, 26px);
+    color: var(--cream);
+    line-height: 1.5;
+    max-width: 400px;
+    margin: 0 auto 56px;
+  }
+  .gw-proposal .closing-rule {
+    width: 40px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto 40px;
+  }
+  .gw-proposal .closing-contact { margin-bottom: 12px; }
+  .gw-proposal .closing-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.2;
+  }
+  .gw-proposal .closing-website {
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-muted);
+    margin-top: 24px;
+  }
+  .gw-proposal .closing-logo { margin-top: 64px; }
+  .gw-proposal .closing-logo .logo-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 10px;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 8px;
+  }
+  .gw-proposal .closing-logo .logo-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 2px 0;
+    font-weight: 400;
+    text-indent: 4px;
+  }
+  .gw-proposal .closing-logo .logo-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 8px;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 12px;
+  }
+  .gw-proposal .closing-validity {
+    margin-top: 48px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+  }
+
+  /* Links */
   .gw-proposal a { color: var(--cream-muted); text-decoration: none; }
   .gw-proposal a:hover { color: var(--cream); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .gw-proposal .section-content { padding: 0 24px !important; }
+    .gw-proposal .cover { padding: 60px 24px !important; }
+    .gw-proposal .options-grid { grid-template-columns: 1fr !important; gap: 56px !important; }
+    .gw-proposal .single-pkg-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .details-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .detail-cell { border-right: none !important; }
+    .gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: 0.5px solid var(--border) !important; }
+    .gw-proposal .detail-cell:last-child { border-bottom: none !important; }
+    .gw-proposal .addon-options { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .gw-proposal .closing { padding: 80px 24px 60px !important; }
+  }
 `;
-
-// ── Logo Group Component ──
-const LogoGroup = ({ small }) => (
-  <div style={{ textAlign: "center" }}>
-    <div
-      style={{
-        width: small ? 36 : 48,
-        height: 0.5,
-        background: "var(--cream-dim)",
-        margin: "0 auto",
-      }}
-    />
-    <div
-      style={{
-        fontFamily: "'Bodoni Moda', serif",
-        fontSize: small ? 9 : 11,
-        letterSpacing: small ? "8px" : "10px",
-        textTransform: "uppercase",
-        color: "var(--cream-dim)",
-        marginTop: small ? 14 : 28,
-        textIndent: small ? "8px" : "10px",
-      }}
-    >
-      THE
-    </div>
-    <div
-      style={{
-        fontFamily: "'Bodoni Moda', serif",
-        fontSize: small ? 20 : "clamp(28px, 8vw, 42px)",
-        letterSpacing: small ? "4px" : "5px",
-        textTransform: "uppercase",
-        color: "var(--cream)",
-        fontWeight: 400,
-        margin: small ? "2px 0" : "4px 0",
-        textIndent: small ? "4px" : "5px",
-      }}
-    >
-      GREENWAY
-    </div>
-    <div
-      style={{
-        fontFamily: "'Plus Jakarta Sans', sans-serif",
-        fontSize: small ? 7 : 10,
-        letterSpacing: small ? "12px" : "14px",
-        textTransform: "uppercase",
-        color: small ? "var(--cream-faint)" : "var(--cream-dim)",
-        fontWeight: 400,
-        textIndent: small ? "12px" : "14px",
-      }}
-    >
-      BAND
-    </div>
-    <div
-      style={{
-        width: small ? 36 : 48,
-        height: 0.5,
-        background: "var(--cream-dim)",
-        margin: small ? "12px auto 0" : "16px auto 0",
-      }}
-    />
-  </div>
-);
-
-// ── Section Divider ──
-const Divider = () => (
-  <div style={{ width: "100%", height: 1, background: "var(--border-light)" }} />
-);
-
-// ── Section Label ──
-const SectionLabel = ({ children, className }) => (
-  <div
-    className={className}
-    style={{
-      fontSize: 9,
-      letterSpacing: "4px",
-      textTransform: "uppercase",
-      color: "var(--cream-faint)",
-      marginBottom: 32,
-    }}
-  >
-    {children}
-  </div>
-);
-
-// ── Reusable Option Column (musicians + services only) ──
-const OptionColumn = ({ label, name, configKey }) => {
-  const musicians = BAND_CONFIGS[configKey] || BAND_CONFIGS['10 piece'];
-  const subtitle = getPackageSubtitle(configKey);
-
-  return (
-    <div>
-      {label && <div className="gw-option-label">{label}</div>}
-      <div className="gw-option-title">{name}</div>
-      <div className="gw-option-subtitle">{subtitle}</div>
-
-      {/* Musicians */}
-      <div className="gw-col-label">Musicians</div>
-      <ul className="gw-instrument-list">
-        {musicians.map((m) => (
-          <li key={m.role}>
-            {m.role}
-            <span className="gw-count">{m.count}</span>
-          </li>
-        ))}
-      </ul>
-
-      {/* Included Services */}
-      <div className="gw-col-label" style={{ marginTop: 28 }}>Included Services</div>
-      <ul className="gw-services-list">
-        {INCLUDED_SERVICES.map((s) => (
-          <li key={s}>{s}</li>
-        ))}
-      </ul>
-    </div>
-  );
-};
 
 // ── ProposalPublic ──
 const ProposalPublic = ({ slug }) => {
@@ -417,7 +690,6 @@ const ProposalPublic = ({ slug }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const containerRef = useRef(null);
-  const scrollHintRef = useRef(null);
   const observerRef = useRef(null);
 
   // Fetch proposal data
@@ -447,7 +719,6 @@ const ProposalPublic = ({ slug }) => {
     style.textContent = PROPOSAL_CSS;
     document.head.appendChild(style);
 
-    // Override body bg for this page
     const prevBg = document.body.style.background;
     const prevOverflow = document.body.style.overflowX;
     document.body.style.background = "#0A0A09";
@@ -464,7 +735,6 @@ const ProposalPublic = ({ slug }) => {
   useEffect(() => {
     if (loading || error) return;
 
-    // Small delay to let DOM render
     const timer = setTimeout(() => {
       const container = containerRef.current;
       if (!container) return;
@@ -484,8 +754,7 @@ const ProposalPublic = ({ slug }) => {
         observerRef.current.observe(el);
       });
 
-      // Cover elements visible immediately
-      container.querySelectorAll(".gw-cover .reveal").forEach((el) => {
+      container.querySelectorAll(".cover .reveal").forEach((el) => {
         setTimeout(() => el.classList.add("visible"), 200);
       });
     }, 100);
@@ -496,33 +765,12 @@ const ProposalPublic = ({ slug }) => {
     };
   }, [loading, error, proposal]);
 
-  // Hide scroll hint on first scroll
-  useEffect(() => {
-    if (loading || error) return;
-    let scrolled = false;
-    const handleScroll = () => {
-      if (!scrolled) {
-        scrolled = true;
-        const hint = scrollHintRef.current;
-        if (hint) {
-          hint.style.transition = "opacity 0.6s ease";
-          hint.style.opacity = "0";
-          setTimeout(() => {
-            if (hint) hint.style.display = "none";
-          }, 600);
-        }
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, error]);
-
   // ── Loading State ──
   if (loading) {
     return (
       <div className="gw-proposal">
         <div
-          className="gw-cover"
+          className="cover"
           style={{
             minHeight: "100vh",
             display: "flex",
@@ -534,7 +782,11 @@ const ProposalPublic = ({ slug }) => {
           }}
         >
           <div style={{ marginBottom: 80 }}>
-            <LogoGroup />
+            <div className="cover-rule" />
+            <div className="cover-the">THE</div>
+            <div className="cover-name">GREENWAY</div>
+            <div className="cover-band">BAND</div>
+            <div className="cover-rule" style={{ marginTop: 16 }} />
           </div>
           <div>
             <div
@@ -573,7 +825,7 @@ const ProposalPublic = ({ slug }) => {
     );
   }
 
-  // ── Error State (branded 404) ──
+  // ── Error State ──
   if (error || !proposal) {
     return (
       <div className="gw-proposal">
@@ -589,34 +841,19 @@ const ProposalPublic = ({ slug }) => {
           }}
         >
           <div style={{ marginBottom: 60 }}>
-            <LogoGroup />
+            <div className="cover-rule" />
+            <div className="cover-the">THE</div>
+            <div className="cover-name">GREENWAY</div>
+            <div className="cover-band">BAND</div>
+            <div className="cover-rule" style={{ marginTop: 16 }} />
           </div>
-          <div
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(20px, 5vw, 26px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              lineHeight: 1.4,
-              maxWidth: 400,
-              marginBottom: 40,
-            }}
-          >
+          <div className="closing-phrase">
             This proposal is no longer available.
           </div>
-          <div
-            style={{
-              width: 36,
-              height: 0.5,
-              background: "var(--cream-dim)",
-              margin: "0 auto 32px",
-            }}
-          />
-          <div style={{ fontSize: 12, color: "var(--cream-dim)", letterSpacing: "1.5px", lineHeight: 2.4 }}>
+          <div className="closing-rule" />
+          <div className="closing-contact">
             <p>Adrian Michael</p>
-            <p>
-              <a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a>
-            </p>
+            <p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p>
             <p>(281) 467 1226</p>
           </div>
         </div>
@@ -632,478 +869,232 @@ const ProposalPublic = ({ slug }) => {
   const dateLong = formatDateLong(p.event_date);
   const venue = p.venue || "";
 
-  // Template type detection (backward compat: missing = Template A)
   let templateType = co.template_type || "A";
   if (!["A", "B", "C", "D"].includes(templateType)) templateType = "A";
 
-  // Package (handle both old and new schemas)
   const configKey = getConfigKey(co.config || co.primary_package?.config || co.package_name || p.config);
   const packageName = co.package_name || co.primary_package?.name || getDisplayName(configKey);
   const primaryPrice = formatPrice(co.price ?? co.primary_package?.price ?? p.price);
 
-  // Times (handle both 24h and 12h formats)
   const receptionStart = formatTime(co.reception_start || co.reception_start_24 || "19:00");
   const receptionEnd = formatTime(co.reception_end || co.reception_end_24 || "23:00");
   const cocktailStart = formatTime(co.cocktail_start || co.cocktail_start_24 || "");
   const cocktailEnd = formatTime(co.cocktail_end || co.cocktail_end_24 || "");
   const hasCocktailTimes = !!(cocktailStart && cocktailEnd);
 
-  // Option 2 (C/D templates)
   const option2PackageName = co.option2_package_name || "The Greenway Band";
   const option2ConfigKey = co.option2_config ? getConfigKey(co.option2_config) : null;
   const option2Price = co.option2_price != null ? formatPrice(co.option2_price) : "";
 
-  // Validate: C/D need option2 data
   if ((templateType === "C" || templateType === "D") && !option2ConfigKey) {
-    console.warn("Template C/D missing option2 data, falling back to Template A");
     templateType = "A";
   }
 
-  const showCocktailTimeline = (templateType === "B" || templateType === "D") && hasCocktailTimes;
+  const showCocktail = templateType === "B" || templateType === "D";
   const showOption2 = templateType === "C" || templateType === "D";
 
-  // Intro text (new schema: intro_text, old: intro_paragraph)
-  const introText = co.intro_text || co.intro_paragraph
-    || "We\u2019d love to be a part of your celebration. Here\u2019s everything you need to know about bringing the band to your event.";
+  const introText = co.intro_text || co.intro_paragraph || "";
 
-  const contentStyle = {
-    maxWidth: 640,
-    margin: "0 auto",
-    padding: "0 32px",
+  const musicians1 = BAND_CONFIGS[configKey] || BAND_CONFIGS['10 piece'];
+  const musicians2 = option2ConfigKey ? (BAND_CONFIGS[option2ConfigKey] || BAND_CONFIGS['10 piece']) : null;
+
+  // Configuration label for event details
+  const getConfigLabel = () => {
+    if (showOption2 && option2ConfigKey) {
+      const num1 = getPieceNumber(configKey);
+      const num2 = getPieceNumber(option2ConfigKey);
+      const low = Math.min(num1, num2);
+      const high = Math.max(num1, num2);
+      const horn = hasHornSection(configKey) || hasHornSection(option2ConfigKey);
+      return `${low} to ${high} Piece${horn ? " with Horn Section" : ""}`;
+    }
+    return packageName;
   };
+
+  // Render musician list
+  const renderMusicians = (musicians) => (
+    <ul className="instrument-list">
+      {musicians.map((m) => (
+        <li key={m.role}>
+          {m.role}
+          <span className="count">{m.count}</span>
+        </li>
+      ))}
+    </ul>
+  );
+
+  // Render services list
+  const renderServices = () => (
+    <ul className="services-list">
+      {INCLUDED_SERVICES.map((s) => (
+        <li key={s}>{s}</li>
+      ))}
+    </ul>
+  );
+
+  // Render performance window
+  const renderPerformanceWindow = () => (
+    <>
+      <div className="pkg-section-label" style={{ marginTop: 32 }}>Performance Window</div>
+      <ul className="services-list">
+        <li>Reception: {receptionStart} to {receptionEnd}</li>
+      </ul>
+    </>
+  );
+
+  // Render price block
+  const renderPriceBlock = (price) => (
+    <>
+      <div className="price-row">
+        <span className="price-label">Investment</span>
+        <span className="price-amount">{price}</span>
+      </div>
+      <div className="package-note">
+        Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
+      </div>
+    </>
+  );
 
   return (
     <div className="gw-proposal" ref={containerRef}>
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 1: COVER                        */}
-      {/* ════════════════════════════════════════ */}
-      <section
-        className="gw-cover"
-        style={{
-          minHeight: "100dvh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          textAlign: "center",
-          padding: "60px 32px",
-          position: "relative",
-        }}
-      >
-        <div className="reveal" style={{ marginBottom: 80 }}>
-          <LogoGroup />
-          <div
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontStyle: "italic",
-              fontSize: 13,
-              color: "var(--cream-dim)",
-              marginTop: 20,
-              letterSpacing: "1.5px",
-            }}
-          >
-            The sound of a great night.
-          </div>
+
+      {/* ═══ COVER ═══ */}
+      <section className="cover">
+        <div className="reveal">
+          <div className="cover-rule" />
+          <div className="cover-the">THE</div>
+          <div className="cover-name">GREENWAY</div>
+          <div className="cover-band">BAND</div>
+          <div className="cover-rule" style={{ marginTop: 16 }} />
+          <div className="cover-descriptor">The sound of a great night.</div>
         </div>
 
-        <div className="reveal reveal-delay-2" style={{ textAlign: "center" }}>
-          <div
-            style={{
-              fontSize: 9,
-              letterSpacing: "4px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              marginBottom: 16,
-            }}
-          >
-            Prepared for
+        <div className="reveal reveal-delay-2 cover-couple">
+          <div className="cover-prepared">Prepared for</div>
+          <div className="cover-couple-names">
+            {p1First} <em>&amp;</em> {p2First}
           </div>
-          <div
-            className="gw-cover-names"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(24px, 6vw, 32px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              letterSpacing: "1px",
-            }}
-          >
-            {p1First}{" "}
-            <em
-              style={{
-                fontStyle: "italic",
-                fontWeight: 400,
-                color: "var(--cream-muted)",
-                fontSize: "0.75em",
-              }}
-            >
-              &amp;
-            </em>{" "}
-            {p2First}
-          </div>
-          <div
-            style={{
-              marginTop: 20,
-              fontSize: 11,
-              letterSpacing: "3px",
-              textTransform: "uppercase",
-              color: "var(--cream-dim)",
-              lineHeight: 2.2,
-            }}
-          >
-            {dateLong}
-            <br />
+          <div className="cover-details">
+            {dateLong}<br />
             {venue}
           </div>
         </div>
 
-        {/* Scroll hint */}
-        <div
-          ref={scrollHintRef}
-          style={{
-            position: "absolute",
-            bottom: 80,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 8,
-            animation: "gwScrollPulse 2.5s ease-in-out infinite",
-          }}
-        >
-          <span
-            style={{
-              fontSize: 8,
-              letterSpacing: "3px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              opacity: 0.4,
-            }}
-          >
-            Scroll
-          </span>
-          <div
-            style={{
-              width: 0.5,
-              height: 24,
-              background: "linear-gradient(to bottom, var(--cream-faint), transparent)",
-              opacity: 0.3,
-            }}
-          />
-        </div>
-
-        {/* Cover footer */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: 36,
-            left: 0,
-            right: 0,
-            textAlign: "center",
-          }}
-        >
-          <p
-            style={{
-              fontSize: 9,
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              opacity: 0.5,
-            }}
-          >
-            greenwayband.com &nbsp;&middot;&nbsp; adrian@greenwayband.com
-          </p>
+        <div className="cover-footer">
+          <p>greenwayband.com &nbsp;&middot;&nbsp; adrian@greenwayband.com</p>
         </div>
       </section>
 
-      <Divider />
+      <div className="section-divider" />
 
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 2: YOUR EVENING (Intro)         */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">A note for you</SectionLabel>
-          <div
-            className="reveal reveal-delay-1 gw-greeting"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(24px, 5vw, 32px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              lineHeight: 1.35,
-              marginBottom: 40,
-            }}
-          >
-            {p1First} and {p2First},
-            <br />
+      {/* ═══ INTRO ═══ */}
+      <section className="intro">
+        <div className="section-content">
+          <div className="section-label reveal">A note for you</div>
+          <div className="intro-greeting reveal reveal-delay-1">
+            {p1First} and {p2First},<br />
             congratulations.
           </div>
 
-          <div
-            className="reveal reveal-delay-2"
-            style={{
-              fontSize: 14,
-              lineHeight: 1.9,
-              color: "var(--cream-muted)",
-              fontWeight: 300,
-            }}
-          >
-            <p style={{ marginBottom: 20 }}>
-              We know how much thought goes into every detail of your wedding, from the venue to the flowers to the food. The band is no different. It sets the tone for the entire night, and we take that seriously.
-            </p>
-            <p style={{ marginBottom: 20 }}>{introText}</p>
-            <p style={{ marginBottom: 20 }}>
-              From your cocktail hour through the last song of the night, our job is simple: make it feel like yours. Every transition, every song choice, every moment on the mic is tailored to you and your guests. We read the room and respond in real time, and that is what separates a great band from a playlist.
-            </p>
+          <div className="intro-body reveal reveal-delay-2">
+            <p>We know how much thought goes into every detail of your wedding. The venue, the flowers, the food. The band is no different. It sets the tone for the entire night, and we take that seriously.</p>
+            {introText && <p>{introText}</p>}
+            <p>From your cocktail hour through the last song of the night, our job is simple: make it feel like yours. Every transition, every song choice, every moment on the mic is tailored to you and your guests. We read the room and respond in real time. That is what separates a great band from a playlist.</p>
             <p>We would love to be part of your night.</p>
           </div>
 
-          <div
-            className="reveal reveal-delay-3"
-            style={{
-              marginTop: 48,
-              paddingTop: 28,
-              borderTop: "0.5px solid var(--border-light)",
-            }}
-          >
-            <div
-              style={{
-                fontFamily: "'Bodoni Moda', serif",
-                fontSize: 15,
-                color: "var(--cream)",
-                marginBottom: 4,
-              }}
-            >
-              Adrian Michael
-            </div>
-            <div
-              style={{
-                fontSize: 10,
-                color: "var(--cream-dim)",
-                letterSpacing: "2px",
-                textTransform: "uppercase",
-              }}
-            >
-              The Greenway Band
-            </div>
+          <div className="intro-signature reveal reveal-delay-3">
+            <div className="sig-name">Adrian Michael</div>
+            <div className="sig-title">The Greenway Band</div>
           </div>
         </div>
       </section>
 
-      <Divider />
+      <div className="section-divider" />
 
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 3: YOUR BAND (Package)          */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div
-          className="gw-section-content"
-          style={contentStyle}
-        >
+      {/* ═══ PACKAGE / OPTIONS ═══ */}
+      <section className="package-section">
+        <div className="section-content">
           {showOption2 ? (
-            /* ── TWO OPTIONS LAYOUT (C/D) ── */
             <>
-              <SectionLabel className="reveal">Your options</SectionLabel>
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                <div className="reveal reveal-delay-1" style={{ paddingBottom: 48 }}>
-                  <OptionColumn
-                    label="Option 1"
-                    name={packageName}
-                    configKey={configKey}
-                  />
+              {/* ── TWO OPTIONS (C/D) ── */}
+              <div className="section-label reveal">Your options</div>
+              <div className="package-title reveal reveal-delay-1">Two Ways to Fill the Room</div>
+              <div className="package-subtitle reveal reveal-delay-1">Choose the configuration that fits your vision</div>
+
+              <div className="options-grid reveal reveal-delay-2">
+                {/* Option A */}
+                <div>
+                  <div className="option-label">Option A</div>
+                  <div className="option-title">{packageName}</div>
+                  <div className="option-subtitle">{getPackageSubtitle(configKey)}</div>
+
+                  <div className="pkg-section-label">Musicians</div>
+                  {renderMusicians(musicians1)}
+
+                  <div className="price-block">
+                    <div className="pkg-section-label" style={{ marginTop: 32 }}>Included Services</div>
+                    {renderServices()}
+                    {renderPerformanceWindow()}
+                    {renderPriceBlock(primaryPrice)}
+                  </div>
                 </div>
-                <div
-                  style={{
-                    width: "100%",
-                    height: 1,
-                    background: "var(--border-light)",
-                  }}
-                />
-                <div className="reveal reveal-delay-2" style={{ paddingTop: 48 }}>
-                  <OptionColumn
-                    label="Option 2"
-                    name={option2PackageName}
-                    configKey={option2ConfigKey}
-                  />
+
+                {/* Option B */}
+                <div>
+                  <div className="option-label">Option B</div>
+                  <div className="option-title">{option2PackageName}</div>
+                  <div className="option-subtitle">{getPackageSubtitle(option2ConfigKey)}</div>
+
+                  <div className="pkg-section-label">Musicians</div>
+                  {renderMusicians(musicians2)}
+
+                  <div className="price-block">
+                    <div className="pkg-section-label" style={{ marginTop: 32 }}>Included Services</div>
+                    {renderServices()}
+                    {renderPerformanceWindow()}
+                    {renderPriceBlock(option2Price)}
+                  </div>
                 </div>
               </div>
             </>
           ) : (
-            /* ── SINGLE PACKAGE LAYOUT (A/B) ── */
             <>
-              <SectionLabel className="reveal">Your package</SectionLabel>
-              <div className="reveal reveal-delay-1">
-                <OptionColumn
-                  name={packageName}
-                  configKey={configKey}
-                />
+              {/* ── SINGLE PACKAGE (A/B) ── */}
+              <div className="section-label reveal">Your package</div>
+              <div className="package-title reveal reveal-delay-1">{packageName}</div>
+              <div className="package-subtitle reveal reveal-delay-1">{getPackageSubtitle(configKey)}</div>
+
+              <div className="single-pkg-grid reveal reveal-delay-2">
+                <div>
+                  <div className="pkg-section-label">Musicians</div>
+                  {renderMusicians(musicians1)}
+                </div>
+                <div>
+                  <div className="pkg-section-label">Included Services</div>
+                  {renderServices()}
+
+                  {renderPerformanceWindow()}
+                </div>
+              </div>
+
+              <div className="reveal reveal-delay-3">
+                {renderPriceBlock(primaryPrice)}
               </div>
             </>
           )}
         </div>
       </section>
 
-      <Divider />
+      <div className="section-divider" />
 
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 4: THE EVENING (Timeline)       */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">The evening</SectionLabel>
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(24px, 5vw, 28px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              marginBottom: 8,
-            }}
-          >
-            {dateLong}
-          </div>
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              fontSize: 13,
-              color: "var(--cream-dim)",
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              marginBottom: 48,
-            }}
-          >
-            {venue}
-          </div>
+      {/* ═══ EVENT DETAILS + COCKTAIL HOUR ═══ */}
+      <section className="details-section">
+        <div className="section-content">
+          <div className="section-label reveal">Event details</div>
+          <div className="details-title reveal reveal-delay-1">Your Evening</div>
 
-          <div className="reveal reveal-delay-2" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-            {showCocktailTimeline && (
-              <div
-                style={{
-                  paddingBottom: 32,
-                  borderBottom: "0.5px solid var(--border-light)",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: "4px",
-                    textTransform: "uppercase",
-                    color: "var(--cream-faint)",
-                    marginBottom: 12,
-                  }}
-                >
-                  Cocktail Hour
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bodoni Moda', serif",
-                    fontSize: 18,
-                    color: "var(--cream)",
-                    fontWeight: 400,
-                  }}
-                >
-                  {cocktailStart} to {cocktailEnd}
-                </div>
-              </div>
-            )}
-            <div>
-              <div
-                style={{
-                  fontSize: 9,
-                  letterSpacing: "4px",
-                  textTransform: "uppercase",
-                  color: "var(--cream-faint)",
-                  marginBottom: 12,
-                }}
-              >
-                Reception
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Bodoni Moda', serif",
-                  fontSize: 18,
-                  color: "var(--cream)",
-                  fontWeight: 400,
-                }}
-              >
-                {receptionStart} to {receptionEnd}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 5: INVESTMENT                   */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">Investment</SectionLabel>
-
-          {showOption2 ? (
-            <div className="reveal reveal-delay-1">
-              <div className="gw-price-row" style={{ marginTop: 0 }}>
-                <span className="gw-price-label">Option 1</span>
-                <span className="gw-option-price">{primaryPrice}</span>
-              </div>
-              <div className="gw-price-row" style={{ borderTop: "none", marginTop: 0 }}>
-                <span className="gw-price-label">Option 2</span>
-                <span className="gw-option-price">{option2Price}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="reveal reveal-delay-1">
-              <div className="gw-price-row" style={{ marginTop: 0 }}>
-                <span className="gw-price-label">Total</span>
-                <span className="gw-option-price">{primaryPrice}</span>
-              </div>
-            </div>
-          )}
-
-          <div
-            className="reveal reveal-delay-2 gw-option-note"
-          >
-            Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 6: EVENT DETAILS                */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">Event details</SectionLabel>
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontSize: "clamp(24px, 5vw, 28px)",
-              color: "var(--cream)",
-              fontWeight: 400,
-              marginBottom: 40,
-            }}
-          >
-            Your Evening
-          </div>
-
-          <div
-            className="reveal reveal-delay-2 gw-details-grid"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 0,
-              border: "0.5px solid var(--border-light)",
-              marginBottom: 48,
-            }}
-          >
+          <div className="details-grid reveal reveal-delay-2">
             {[
               { label: "Couple", value: p2First ? `${p1First} & ${p2First}` : p1First },
               { label: "Date", value: dateLong },
@@ -1111,284 +1102,137 @@ const ProposalPublic = ({ slug }) => {
               { label: "Event Type", value: "Wedding Reception" },
               { label: "Cocktail Hour", value: hasCocktailTimes ? `${cocktailStart} to ${cocktailEnd}` : "Available upon request" },
               { label: "Reception", value: `${receptionStart} to ${receptionEnd}` },
-              { label: "Configuration", value: packageName },
+              { label: "Configuration", value: getConfigLabel() },
               { label: "Services", value: "Entertainment + MC" },
-            ].map((cell, i) => (
-              <div
-                key={cell.label}
-                className="gw-detail-cell"
-                style={{
-                  padding: "24px 28px",
-                  borderBottom: "0.5px solid var(--border)",
-                  borderRight: i % 2 === 0 ? "0.5px solid var(--border)" : "none",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: "3px",
-                    textTransform: "uppercase",
-                    color: "var(--cream-faint)",
-                    marginBottom: 8,
-                  }}
-                >
-                  {cell.label}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bodoni Moda', serif",
-                    fontSize: 15,
-                    color: "var(--cream)",
-                    fontWeight: 400,
-                  }}
-                >
-                  {cell.value}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 6b: TESTIMONIALS                 */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">What couples say</SectionLabel>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 48 }}>
-            {TESTIMONIALS.map((t, i) => (
-              <div
-                key={i}
-                className={`reveal reveal-delay-${Math.min(i + 1, 3)}`}
-                style={{
-                  paddingBottom: i < TESTIMONIALS.length - 1 ? 48 : 0,
-                  borderBottom:
-                    i < TESTIMONIALS.length - 1
-                      ? "0.5px solid var(--border-light)"
-                      : "none",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "'Bodoni Moda', serif",
-                    fontStyle: "italic",
-                    fontSize: "clamp(16px, 3.5vw, 18px)",
-                    color: "var(--cream-muted)",
-                    lineHeight: 1.8,
-                    fontWeight: 400,
-                    marginBottom: 20,
-                  }}
-                >
-                  &ldquo;{t.quote}&rdquo;
-                </div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "var(--cream)",
-                      fontWeight: 500,
-                      letterSpacing: "0.5px",
-                    }}
-                  >
-                    {t.couple}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "var(--cream-faint)",
-                      fontWeight: 300,
-                    }}
-                  >
-                    {t.venue}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <Divider />
-
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 7: NEXT STEPS                   */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "80px 0" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <SectionLabel className="reveal">Next steps</SectionLabel>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 36 }}>
-            {[
-              {
-                num: "01",
-                title: "Schedule a call",
-                desc: "Let\u2019s walk through the details together.",
-              },
-              {
-                num: "02",
-                title: "Review your contract",
-                desc: "We\u2019ll send everything over once we\u2019ve connected.",
-              },
-              {
-                num: "03",
-                title: "Reserve your date",
-                desc: "A 50% deposit locks in your evening.",
-              },
-            ].map((step, i) => (
-              <div
-                key={step.num}
-                className={`reveal reveal-delay-${i + 1}`}
-                style={{
-                  paddingBottom: 36,
-                  borderBottom: i < 2 ? "0.5px solid var(--border-light)" : "none",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 9,
-                    letterSpacing: "3px",
-                    textTransform: "uppercase",
-                    color: "var(--cream-faint)",
-                    marginBottom: 12,
-                  }}
-                >
-                  Step {step.num}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "'Bodoni Moda', serif",
-                    fontSize: 20,
-                    color: "var(--cream)",
-                    fontWeight: 400,
-                    marginBottom: 8,
-                  }}
-                >
-                  {step.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "var(--cream-dim)",
-                    fontWeight: 300,
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {step.desc}
-                </div>
+            ].map((cell) => (
+              <div key={cell.label} className="detail-cell">
+                <div className="detail-label">{cell.label}</div>
+                <div className="detail-value">{cell.value}</div>
               </div>
             ))}
           </div>
 
-          {/* Contact */}
-          <div
-            className="reveal reveal-delay-4"
-            style={{
-              marginTop: 48,
-              paddingTop: 32,
-              borderTop: "0.5px solid var(--border-light)",
-              textAlign: "center",
-            }}
-          >
-            <div
-              style={{
-                fontSize: 12,
-                color: "var(--cream-dim)",
-                letterSpacing: "1.5px",
-                lineHeight: 2.4,
-              }}
-            >
-              <p>
-                <a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a>
-              </p>
-              <p>(281) 467 1226</p>
+          {/* Cocktail Hour Add-On (B/D only) */}
+          {showCocktail && (
+            <div className="addon-section reveal reveal-delay-3">
+              <div className="addon-title">Cocktail Hour</div>
+              <div className="addon-desc">
+                Live music during cocktails sets the tone before the reception begins. We offer acoustic arrangements tailored to the mood you want.
+              </div>
+              <div className="addon-options">
+                <div className="addon-card">
+                  <div className="addon-type">Solo</div>
+                  <div className="addon-price">$1,250</div>
+                </div>
+                <div className="addon-card">
+                  <div className="addon-type">Duo</div>
+                  <div className="addon-price">$1,875</div>
+                </div>
+                <div className="addon-card">
+                  <div className="addon-type">Trio</div>
+                  <div className="addon-price">$2,500</div>
+                </div>
+              </div>
             </div>
+          )}
+        </div>
+      </section>
+
+      <div className="section-divider" />
+
+      {/* ═══ TESTIMONIALS ═══ */}
+      <section className="testimonials-section">
+        <div className="section-content">
+          <div className="section-label reveal">What couples say</div>
+
+          <div className="testimonial-block reveal reveal-delay-1">
+            <div className="testimonial-quote-mark">&ldquo;</div>
+            <div className="testimonial-text">
+              Our wedding guests danced the night away like I've never seen before.
+            </div>
+            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-attr">Emma B. &nbsp;&middot;&nbsp; WeddingWire</div>
+          </div>
+
+          <div className="testimonial-divider" />
+
+          <div className="testimonial-block reveal reveal-delay-2">
+            <div className="testimonial-quote-mark">&ldquo;</div>
+            <div className="testimonial-text">
+              You and the Greenway Band were a hit at the wedding at the Grand Galvez. From start to finish, the songs, the sound, and the look of the band were all just amazing. You left our guests wanting more.
+            </div>
+            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-attr">Allison &nbsp;&middot;&nbsp; WeddingWire</div>
+          </div>
+
+          <div className="testimonial-divider" />
+
+          <div className="testimonial-block reveal reveal-delay-3">
+            <div className="testimonial-quote-mark">&ldquo;</div>
+            <div className="testimonial-text">
+              Every guest was on their feet by the second song. We still have people texting us about the band three months later.
+            </div>
+            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-attr">Sarah &amp; James H. &nbsp;&middot;&nbsp; WeddingWire</div>
           </div>
         </div>
       </section>
 
-      <Divider />
+      <div className="section-divider" />
 
-      {/* ════════════════════════════════════════ */}
-      {/* SECTION 8: FOOTER                       */}
-      {/* ════════════════════════════════════════ */}
-      <section style={{ padding: "100px 0 80px", textAlign: "center" }}>
-        <div className="gw-section-content" style={contentStyle}>
-          <div
-            className="reveal"
-            style={{
-              fontFamily: "'Bodoni Moda', serif",
-              fontStyle: "italic",
-              fontSize: "clamp(22px, 5vw, 26px)",
-              color: "var(--cream)",
-              lineHeight: 1.5,
-              maxWidth: 360,
-              margin: "0 auto 48px",
-            }}
-          >
-            Your guests won&rsquo;t stop talking about it.
+      {/* ═══ NEXT STEPS ═══ */}
+      <section className="steps-section">
+        <div className="section-content">
+          <div className="section-label reveal">Next steps</div>
+
+          <div className="step-block reveal reveal-delay-1">
+            <div className="step-number">Step 01</div>
+            <div className="step-title">Schedule a call</div>
+            <div className="step-desc">Let&rsquo;s walk through the details together.</div>
           </div>
 
-          <div
-            className="reveal reveal-delay-1"
-            style={{
-              width: 36,
-              height: 0.5,
-              background: "var(--cream-dim)",
-              margin: "0 auto 36px",
-            }}
-          />
+          <div className="step-block reveal reveal-delay-2">
+            <div className="step-number">Step 02</div>
+            <div className="step-title">Review your contract</div>
+            <div className="step-desc">We&rsquo;ll send everything over once we&rsquo;ve connected.</div>
+          </div>
 
-          <div
-            className="reveal reveal-delay-2"
-            style={{
-              fontSize: 12,
-              color: "var(--cream-dim)",
-              letterSpacing: "1.5px",
-              lineHeight: 2.4,
-            }}
-          >
-            <p>Adrian Michael</p>
-            <p>
-              <a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a>
-            </p>
+          <div className="step-block reveal reveal-delay-3">
+            <div className="step-number">Step 03</div>
+            <div className="step-title">Reserve your date</div>
+            <div className="step-desc">A 50% deposit locks in your evening.</div>
+          </div>
+
+          <div className="steps-contact reveal reveal-delay-4">
+            <p>adrian@greenwayband.com</p>
             <p>(281) 467 1226</p>
           </div>
+        </div>
+      </section>
 
-          <div
-            className="reveal reveal-delay-3"
-            style={{
-              fontSize: 12,
-              letterSpacing: "3px",
-              textTransform: "uppercase",
-              color: "var(--cream-muted)",
-              marginTop: 20,
-            }}
-          >
-            greenwayband.com
-          </div>
+      <div className="section-divider" />
 
-          {/* Closing logo */}
-          <div className="reveal reveal-delay-4" style={{ marginTop: 64 }}>
-            <LogoGroup small />
-          </div>
+      {/* ═══ CLOSING ═══ */}
+      <section className="closing">
+        <div className="closing-phrase reveal">Your guests won&rsquo;t stop talking about it.</div>
+        <div className="closing-rule reveal reveal-delay-1" />
+        <div className="closing-contact reveal reveal-delay-2">
+          <p>Adrian Michael</p>
+          <p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p>
+          <p>(281) 467 1226</p>
+        </div>
+        <div className="closing-website reveal reveal-delay-3">greenwayband.com</div>
 
-          <div
-            className="reveal reveal-delay-5"
-            style={{
-              marginTop: 48,
-              fontSize: 9,
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              color: "var(--cream-faint)",
-              opacity: 0.5,
-            }}
-          >
-            This proposal is valid for 30 days from date of receipt.
-          </div>
+        <div className="closing-logo reveal reveal-delay-4">
+          <div className="cover-rule" style={{ marginBottom: 16 }} />
+          <div className="logo-the">THE</div>
+          <div className="logo-name">GREENWAY</div>
+          <div className="logo-band">BAND</div>
+          <div className="cover-rule" style={{ marginTop: 12 }} />
+        </div>
+
+        <div className="closing-validity reveal reveal-delay-5">
+          This proposal is valid for 30 days from date of receipt.
         </div>
       </section>
     </div>
