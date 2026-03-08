@@ -4,93 +4,27 @@ import SlideOverPanel from "./SlideOverPanel";
 import Icon from "../icons";
 import { formatCurrency, parseCurrency } from "../utils/formatters";
 
-// ── Package pricing and tier logic ──
-const PACKAGE_OPTIONS = [
-  { value: "6 Piece Band", config: "6pc", price: 9000 },
-  { value: "8 Piece Band", config: "8pc", price: 10750 },
-  { value: "10 Piece Band", config: "10pc", price: 12500 },
-  { value: "12 Piece Band", config: "12pc", price: 14750 },
-  { value: "14 Piece Band", config: "14pc", price: 16875 },
+// ── Configuration options ──
+const CONFIG_OPTIONS = [
+  { value: "6pc", label: "6pc" },
+  { value: "8pc", label: "8pc" },
+  { value: "10pc", label: "10pc" },
+  { value: "12pc", label: "12pc" },
+  { value: "14pc", label: "14pc" },
 ];
 
-const PACKAGE_PRICES = {
-  "6 Piece Band": 9000,
-  "8 Piece Band": 10750,
-  "10 Piece Band": 12500,
-  "12 Piece Band": 14750,
-  "14 Piece Band": 16875,
-};
-
-// Upsell tier: 6→10, 8→10, 10→14, 12→14, 14→null
-const UPSELL_TIER = {
-  "6 Piece Band": "10 Piece Band",
-  "8 Piece Band": "10 Piece Band",
-  "10 Piece Band": "14 Piece Band",
-  "12 Piece Band": "14 Piece Band",
-  "14 Piece Band": null,
-};
-
-// ── Intro Templates ──
-const INTRO_TEMPLATES = [
-  {
-    id: 'standard',
-    label: 'Standard',
-    text: "We're looking forward to being part of your evening at {{VENUE}}. A {{CONFIG}} gives you the full range \u2014 vocalists, rhythm section, and enough energy to keep the room moving from start to finish.",
-  },
-  {
-    id: 'horns',
-    label: 'Horn Section Highlight',
-    text: "{{VENUE}} is the kind of room where a full band can really open up. The {{CONFIG}} brings a horn section that fills the space without overpowering it, and vocalists who know how to read a crowd.",
-  },
-  {
-    id: 'intimate',
-    label: 'Smaller Configuration',
-    text: "We love playing rooms like {{VENUE}}. A {{CONFIG}} keeps things tight and focused \u2014 every musician on that stage is pulling their weight, and the energy stays right where your guests are.",
-  },
-  {
-    id: 'custom',
-    label: 'Custom',
-    text: '',
-  },
+const TEMPLATE_TYPES = [
+  { value: "A", label: "Single Package" },
+  { value: "B", label: "Single + Cocktail" },
+  { value: "C", label: "Two Options" },
+  { value: "D", label: "Two Options + Cocktail" },
 ];
 
-const nameToConfig = (name) => {
-  const num = name?.replace(/\D/g, "");
-  return num ? `${num}pc` : "";
-};
-
-const configToName = (config) => {
+// Normalize any config string to "Xpc" format
+const normalizeConfig = (config) => {
   if (!config) return "";
   const num = String(config).replace(/\D/g, "");
-  return num ? `${num} Piece Band` : config;
-};
-
-// Format time for display (24hr to 12hr)
-const formatTime12 = (time24) => {
-  if (!time24) return "";
-  const [h, m] = time24.split(":");
-  const hour = parseInt(h, 10);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
-  return `${h12}:${m} ${ampm}`;
-};
-
-// Resolve merge fields in a template
-const resolveTemplate = (templateText, venue, packageName) => {
-  if (!templateText) return "";
-  const configDisplay = packageName
-    ? packageName.toLowerCase().replace(" band", " band")
-    : "band";
-  return templateText
-    .replace(/\{\{VENUE\}\}/g, venue || "your venue")
-    .replace(/\{\{CONFIG\}\}/g, configDisplay);
-};
-
-// Determine which template ID to auto-select based on config
-const getDefaultTemplateId = (packageName) => {
-  const num = parseInt(String(packageName || "").replace(/\D/g, ""), 10);
-  if (num >= 10) return 'horns';
-  return 'standard';
+  return num ? `${num}pc` : "";
 };
 
 // ── Shared styles ──
@@ -134,39 +68,6 @@ const FormField = ({ label, children }) => (
   </div>
 );
 
-const ToggleSwitch = ({ checked, onChange, disabled }) => (
-  <button
-    onClick={() => !disabled && onChange(!checked)}
-    disabled={disabled}
-    style={{
-      width: 36,
-      height: 20,
-      borderRadius: 10,
-      border: "none",
-      background: checked ? COLORS.black : COLORS.border,
-      position: "relative",
-      cursor: disabled ? "not-allowed" : "pointer",
-      transition: "background 0.2s",
-      opacity: disabled ? 0.5 : 1,
-      flexShrink: 0,
-    }}
-  >
-    <div
-      style={{
-        width: 16,
-        height: 16,
-        borderRadius: 8,
-        background: COLORS.white,
-        position: "absolute",
-        top: 2,
-        left: checked ? 18 : 2,
-        transition: "left 0.2s",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-      }}
-    />
-  </button>
-);
-
 const SectionDivider = () => (
   <div
     style={{
@@ -177,200 +78,117 @@ const SectionDivider = () => (
   />
 );
 
+const SectionLabel = ({ label }) => (
+  <div
+    style={{
+      fontSize: 13,
+      fontWeight: 700,
+      color: COLORS.text,
+      marginBottom: 14,
+      fontFamily: FONTS.body,
+    }}
+  >
+    {label}
+  </div>
+);
+
 const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
   const hasExisting = !!lead.proposal_slug;
   const existingConfig = lead.proposal_config_override || {};
-  const hasNewSchema = !!existingConfig.primary_package;
 
   // ── State ──
-  const [primaryPackage, setPrimaryPackage] = useState("");
-  const [primaryPrice, setPrimaryPrice] = useState("");
-  const [showUpsell, setShowUpsell] = useState(false);
-  const [upsellPackage, setUpsellPackage] = useState("");
-  const [upsellPrice, setUpsellPrice] = useState("");
-  const [eventDate, setEventDate] = useState(lead.event_date || "");
-  const [venue, setVenue] = useState(lead.venue || "");
-  const [cocktailStart, setCocktailStart] = useState("");
-  const [cocktailEnd, setCocktailEnd] = useState("");
+  const [templateType, setTemplateType] = useState(
+    existingConfig.template_type || "A"
+  );
+  const [packageName, setPackageName] = useState("The Greenway Band");
+  const [config, setConfig] = useState("");
+  const [price, setPrice] = useState("");
   const [receptionStart, setReceptionStart] = useState("19:00");
   const [receptionEnd, setReceptionEnd] = useState("23:00");
-  const [showCocktail, setShowCocktail] = useState(true);
-  const [introParagraph, setIntroParagraph] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState("standard");
+  const [introText, setIntroText] = useState("");
+  const [cocktailStart, setCocktailStart] = useState("");
+  const [cocktailEnd, setCocktailEnd] = useState("");
+  const [option2PackageName, setOption2PackageName] = useState("The Greenway Band");
+  const [option2Config, setOption2Config] = useState("");
+  const [option2Price, setOption2Price] = useState("");
   const [generating, setGenerating] = useState(false);
   const [showStagePrompt, setShowStagePrompt] = useState(false);
   const [stageUpdating, setStageUpdating] = useState(false);
   const [toast, setToast] = useState(null);
 
+  // Derived visibility
+  const showCocktail = templateType === "B" || templateType === "D";
+  const showOption2 = templateType === "C" || templateType === "D";
+
   // ── Initialize from existing config ──
   useEffect(() => {
-    let initPackage = "";
+    const ec = existingConfig;
 
-    if (hasNewSchema) {
-      const ec = existingConfig;
-      initPackage = ec.primary_package.name;
-      setPrimaryPackage(initPackage);
-      setPrimaryPrice(formatCurrency(ec.primary_package.price));
-      if (ec.upsell_package) {
-        setShowUpsell(true);
-        setUpsellPackage(ec.upsell_package.name);
-        setUpsellPrice(formatCurrency(ec.upsell_package.price));
-      }
-      setCocktailStart(ec.cocktail_start_24 || "");
-      setCocktailEnd(ec.cocktail_end_24 || "");
-      setReceptionStart(ec.reception_start_24 || "19:00");
-      setReceptionEnd(ec.reception_end_24 || "23:00");
-      setShowCocktail(ec.show_cocktail !== false);
+    // Package Name — try new schema, then old schema, then default
+    setPackageName(
+      ec.package_name ||
+        ec.primary_package?.name ||
+        "The Greenway Band"
+    );
 
-      if (ec.intro_paragraph) {
-        setIntroParagraph(ec.intro_paragraph);
-        setSelectedTemplate("custom");
-      } else {
-        const defaultId = getDefaultTemplateId(initPackage);
-        setSelectedTemplate(defaultId);
-        const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
-        if (tpl) {
-          setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
-        }
-      }
-    } else if (existingConfig.package_name) {
-      initPackage = existingConfig.package_name;
-      setPrimaryPackage(initPackage);
-      setPrimaryPrice(lead.price != null ? formatCurrency(lead.price) : "");
-      setCocktailStart(existingConfig.cocktail_start_24 || "");
-      setCocktailEnd(existingConfig.cocktail_end_24 || "");
-      setReceptionStart(existingConfig.reception_start_24 || "19:00");
-      setReceptionEnd(existingConfig.reception_end_24 || "23:00");
+    // Config — try new schema, then old nested, then lead.config
+    const rawConfig =
+      ec.config ||
+      ec.primary_package?.config ||
+      normalizeConfig(lead.config) ||
+      "";
+    setConfig(normalizeConfig(rawConfig) || rawConfig);
 
-      if (existingConfig.intro_paragraph) {
-        setIntroParagraph(existingConfig.intro_paragraph);
-        setSelectedTemplate("custom");
-      } else {
-        const defaultId = getDefaultTemplateId(initPackage);
-        setSelectedTemplate(defaultId);
-        const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
-        if (tpl) {
-          setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
-        }
-      }
-    } else {
-      // No existing config — pre-fill from lead data
-      const leadConfig = lead.config;
-      if (leadConfig) {
-        initPackage = configToName(leadConfig);
-        setPrimaryPackage(initPackage);
-        if (PACKAGE_PRICES[initPackage]) {
-          setPrimaryPrice(formatCurrency(PACKAGE_PRICES[initPackage]));
-        }
-      }
-      if (lead.price != null) {
-        setPrimaryPrice(formatCurrency(lead.price));
-      }
+    // Price — try new schema, then old nested, then lead.price
+    const rawPrice =
+      ec.price ?? ec.primary_package?.price ?? lead.price ?? null;
+    setPrice(rawPrice != null ? formatCurrency(rawPrice) : "");
 
-      const defaultId = getDefaultTemplateId(initPackage);
-      setSelectedTemplate(defaultId);
-      const tpl = INTRO_TEMPLATES.find((t) => t.id === defaultId);
-      if (tpl) {
-        setIntroParagraph(resolveTemplate(tpl.text, lead.venue || "", initPackage));
-      }
-    }
+    // Reception times
+    setReceptionStart(
+      ec.reception_start || ec.reception_start_24 || "19:00"
+    );
+    setReceptionEnd(ec.reception_end || ec.reception_end_24 || "23:00");
+
+    // Intro text
+    setIntroText(ec.intro_text || ec.intro_paragraph || "");
+
+    // Cocktail times
+    setCocktailStart(ec.cocktail_start || ec.cocktail_start_24 || "");
+    setCocktailEnd(ec.cocktail_end || ec.cocktail_end_24 || "");
+
+    // Option 2
+    setOption2PackageName(ec.option2_package_name || "The Greenway Band");
+    setOption2Config(ec.option2_config || "");
+    setOption2Price(
+      ec.option2_price != null ? formatCurrency(ec.option2_price) : ""
+    );
   }, []);
 
-  // ── Template selection handler ──
-  const handleTemplateSelect = (templateId) => {
-    setSelectedTemplate(templateId);
-    if (templateId === "custom") return;
-    const tpl = INTRO_TEMPLATES.find((t) => t.id === templateId);
-    if (tpl) {
-      setIntroParagraph(resolveTemplate(tpl.text, venue, primaryPackage));
-    }
-  };
-
-  // ── Live-update intro when venue or package changes (if a non-custom template is active) ──
-  useEffect(() => {
-    if (selectedTemplate === "custom") return;
-    const tpl = INTRO_TEMPLATES.find((t) => t.id === selectedTemplate);
-    if (tpl) {
-      setIntroParagraph(resolveTemplate(tpl.text, venue, primaryPackage));
-    }
-  }, [venue, primaryPackage, selectedTemplate]);
-
-  // ── Package cascading ──
-  const handlePrimaryChange = (name) => {
-    setPrimaryPackage(name);
-    setPrimaryPrice(
-      PACKAGE_PRICES[name] ? formatCurrency(PACKAGE_PRICES[name]) : ""
-    );
-
-    const upsell = UPSELL_TIER[name];
-    if (upsell) {
-      if (showUpsell) {
-        setUpsellPackage(upsell);
-        setUpsellPrice(formatCurrency(PACKAGE_PRICES[upsell]));
-      }
-    } else {
-      setShowUpsell(false);
-      setUpsellPackage("");
-      setUpsellPrice("");
-    }
-  };
-
-  const handleUpsellToggle = (on) => {
-    setShowUpsell(on);
-    if (on && !upsellPackage) {
-      const upsell = UPSELL_TIER[primaryPackage];
-      if (upsell) {
-        setUpsellPackage(upsell);
-        setUpsellPrice(formatCurrency(PACKAGE_PRICES[upsell]));
-      }
-    }
-  };
-
-  const handleUpsellChange = (name) => {
-    setUpsellPackage(name);
-    setUpsellPrice(
-      PACKAGE_PRICES[name] ? formatCurrency(PACKAGE_PRICES[name]) : ""
-    );
-  };
-
-  // ── Build config override (new schema + backward compat) ──
+  // ── Build config override ──
   const buildConfigOverride = () => {
-    const primaryPriceRaw = parseCurrency(primaryPrice);
-    const upsellPriceRaw = parseCurrency(upsellPrice);
-
-    return {
-      primary_package: {
-        name: primaryPackage,
-        price: primaryPriceRaw,
-        config: nameToConfig(primaryPackage),
-      },
-      upsell_package:
-        showUpsell && upsellPackage
-          ? {
-              name: upsellPackage,
-              price: upsellPriceRaw,
-              config: nameToConfig(upsellPackage),
-            }
-          : null,
-      upsell_config:
-        showUpsell && upsellPackage
-          ? upsellPackage.replace(/\D/g, "") + " piece"
-          : null,
-      cocktail_options: showCocktail ? ["solo", "duo", "trio"] : [],
-      show_cocktail: showCocktail,
-      intro_paragraph: introParagraph || null,
-
-      // Backward compat fields (for existing ProposalPublic)
-      package_name: primaryPackage,
-      cocktail_start: cocktailStart ? formatTime12(cocktailStart) : null,
-      cocktail_end: cocktailEnd ? formatTime12(cocktailEnd) : null,
-      reception_start: receptionStart ? formatTime12(receptionStart) : null,
-      reception_end: receptionEnd ? formatTime12(receptionEnd) : null,
-      cocktail_start_24: cocktailStart || null,
-      cocktail_end_24: cocktailEnd || null,
-      reception_start_24: receptionStart || null,
-      reception_end_24: receptionEnd || null,
+    const override = {
+      template_type: templateType,
+      package_name: packageName,
+      config: config,
+      price: parseCurrency(price) || 0,
+      reception_start: receptionStart,
+      reception_end: receptionEnd,
+      intro_text: introText || null,
     };
+
+    if (showCocktail) {
+      override.cocktail_start = cocktailStart || null;
+      override.cocktail_end = cocktailEnd || null;
+    }
+
+    if (showOption2) {
+      override.option2_package_name = option2PackageName;
+      override.option2_config = option2Config;
+      override.option2_price = parseCurrency(option2Price) || 0;
+    }
+
+    return override;
   };
 
   // ── Generate handler ──
@@ -378,18 +196,17 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
     setGenerating(true);
     try {
       const configOverride = buildConfigOverride();
-      const primaryPriceRaw = parseCurrency(primaryPrice);
+      const primaryPriceRaw = parseCurrency(price);
 
+      // Update lead fields (price, config)
       const leadUpdates = {};
       if (primaryPriceRaw && primaryPriceRaw !== lead.price)
         leadUpdates.price = primaryPriceRaw;
-      if (venue && venue !== lead.venue) leadUpdates.venue = venue;
-      if (eventDate && eventDate !== lead.event_date)
-        leadUpdates.event_date = eventDate;
-      const newConfig = primaryPackage
-        ? primaryPackage.replace(/\D/g, "") + " piece"
+      const configForLead = config
+        ? config.replace("pc", "") + " piece"
         : "";
-      if (newConfig && newConfig !== lead.config) leadUpdates.config = newConfig;
+      if (configForLead && configForLead !== lead.config)
+        leadUpdates.config = configForLead;
 
       if (Object.keys(leadUpdates).length > 0) {
         try {
@@ -444,8 +261,6 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
   const existingUrl = hasExisting
     ? `${window.location.origin}/proposal/${lead.proposal_slug}`
     : null;
-
-  const is14Piece = primaryPackage === "14 Piece Band";
 
   return (
     <SlideOverPanel
@@ -502,107 +317,56 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
         </div>
       )}
 
-      {/* ── PRIMARY PACKAGE ── */}
-      <FormField label="Primary Package">
-        <select
-          style={selectStyle}
-          value={primaryPackage}
-          onChange={(e) => handlePrimaryChange(e.target.value)}
-        >
-          <option value="">Select...</option>
-          {PACKAGE_OPTIONS.map((p) => (
-            <option key={p.value} value={p.value}>
-              {p.value}
-            </option>
-          ))}
-        </select>
-      </FormField>
-
-      <FormField label="Primary Price">
-        <input
-          style={inputStyle}
-          type="text"
-          value={primaryPrice}
-          onChange={(e) =>
-            setPrimaryPrice(e.target.value.replace(/[^\d]/g, ""))
-          }
-          onBlur={() => setPrimaryPrice(formatCurrency(primaryPrice))}
-          onFocus={() => {
-            const raw = parseCurrency(primaryPrice);
-            setPrimaryPrice(raw ? String(raw) : "");
-          }}
-          placeholder="$0"
-        />
-      </FormField>
-
-      {/* ── UPSELL TOGGLE + PACKAGE ── */}
+      {/* ── TEMPLATE TYPE SELECTOR ── */}
       <div
         style={{
           display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: showUpsell ? 16 : 20,
+          gap: 6,
+          flexWrap: "wrap",
+          marginBottom: 20,
         }}
       >
-        <label
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: is14Piece ? COLORS.textLight : COLORS.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-          }}
-        >
-          Show Upsell Package
-        </label>
-        <ToggleSwitch
-          checked={showUpsell}
-          onChange={handleUpsellToggle}
-          disabled={is14Piece}
+        {TEMPLATE_TYPES.map((t) => (
+          <button
+            key={t.value}
+            onClick={() => setTemplateType(t.value)}
+            style={{
+              padding: "7px 14px",
+              background:
+                templateType === t.value ? COLORS.black : COLORS.white,
+              color:
+                templateType === t.value ? COLORS.white : COLORS.textMuted,
+              border: `1px solid ${
+                templateType === t.value ? COLORS.black : COLORS.border
+              }`,
+              borderRadius: RADII.pill,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              fontFamily: FONTS.body,
+              transition: "all 0.15s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OPTION 1 LABEL (only when C or D) ── */}
+      {showOption2 && <SectionLabel label="Option 1" />}
+
+      {/* ── PRIMARY PACKAGE FIELDS (always visible) ── */}
+      <FormField label="Package Name">
+        <input
+          style={inputStyle}
+          type="text"
+          value={packageName}
+          onChange={(e) => setPackageName(e.target.value)}
+          placeholder="The Greenway Band"
         />
-      </div>
+      </FormField>
 
-      {showUpsell && (
-        <>
-          <FormField label="Upsell Package">
-            <select
-              style={selectStyle}
-              value={upsellPackage}
-              onChange={(e) => handleUpsellChange(e.target.value)}
-            >
-              <option value="">Select...</option>
-              {PACKAGE_OPTIONS.filter(
-                (p) => p.value !== primaryPackage
-              ).map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.value}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          <FormField label="Upsell Price">
-            <input
-              style={inputStyle}
-              type="text"
-              value={upsellPrice}
-              onChange={(e) =>
-                setUpsellPrice(e.target.value.replace(/[^\d]/g, ""))
-              }
-              onBlur={() => setUpsellPrice(formatCurrency(upsellPrice))}
-              onFocus={() => {
-                const raw = parseCurrency(upsellPrice);
-                setUpsellPrice(raw ? String(raw) : "");
-              }}
-              placeholder="$0"
-            />
-          </FormField>
-        </>
-      )}
-
-      <SectionDivider />
-
-      {/* ── EVENT DATE + VENUE ── */}
       <div
         style={{
           display: "grid",
@@ -610,50 +374,38 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
           gap: 12,
         }}
       >
-        <FormField label="Event Date">
-          <input
-            style={inputStyle}
-            type="date"
-            value={eventDate}
-            onChange={(e) => setEventDate(e.target.value)}
-          />
+        <FormField label="Configuration">
+          <select
+            style={selectStyle}
+            value={config}
+            onChange={(e) => setConfig(e.target.value)}
+          >
+            <option value="">Select...</option>
+            {CONFIG_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
         </FormField>
-        <FormField label="Venue">
+        <FormField label="Price">
           <input
             style={inputStyle}
-            value={venue}
-            onChange={(e) => setVenue(e.target.value)}
-          />
-        </FormField>
-      </div>
-
-      {/* ── COCKTAIL TIMES ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 12,
-        }}
-      >
-        <FormField label="Cocktail Hour Start">
-          <input
-            style={inputStyle}
-            type="time"
-            value={cocktailStart}
-            onChange={(e) => setCocktailStart(e.target.value)}
-          />
-        </FormField>
-        <FormField label="Cocktail Hour End">
-          <input
-            style={inputStyle}
-            type="time"
-            value={cocktailEnd}
-            onChange={(e) => setCocktailEnd(e.target.value)}
+            type="text"
+            value={price}
+            onChange={(e) =>
+              setPrice(e.target.value.replace(/[^\d]/g, ""))
+            }
+            onBlur={() => setPrice(formatCurrency(price))}
+            onFocus={() => {
+              const raw = parseCurrency(price);
+              setPrice(raw ? String(raw) : "");
+            }}
+            placeholder="$0"
           />
         </FormField>
       </div>
 
-      {/* ── RECEPTION TIMES ── */}
       <div
         style={{
           display: "grid",
@@ -679,96 +431,120 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
         </FormField>
       </div>
 
+      {/* ── COCKTAIL HOUR (B and D only) ── */}
+      {showCocktail && (
+        <>
+          <div style={{ marginTop: 8 }}>
+            <SectionDivider />
+            <SectionLabel label="Cocktail Hour" />
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
+            <FormField label="Cocktail Start">
+              <input
+                style={inputStyle}
+                type="time"
+                value={cocktailStart}
+                onChange={(e) => setCocktailStart(e.target.value)}
+              />
+            </FormField>
+            <FormField label="Cocktail End">
+              <input
+                style={inputStyle}
+                type="time"
+                value={cocktailEnd}
+                onChange={(e) => setCocktailEnd(e.target.value)}
+              />
+            </FormField>
+          </div>
+        </>
+      )}
+
+      {/* ── OPTION 2 (C and D only) ── */}
+      {showOption2 && (
+        <>
+          <div style={{ marginTop: 8 }}>
+            <SectionDivider />
+            <SectionLabel label="Option 2" />
+          </div>
+          <FormField label="Package Name">
+            <input
+              style={inputStyle}
+              type="text"
+              value={option2PackageName}
+              onChange={(e) => setOption2PackageName(e.target.value)}
+              placeholder="The Greenway Band"
+            />
+          </FormField>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 12,
+            }}
+          >
+            <FormField label="Configuration">
+              <select
+                style={selectStyle}
+                value={option2Config}
+                onChange={(e) => setOption2Config(e.target.value)}
+              >
+                <option value="">Select...</option>
+                {CONFIG_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+            <FormField label="Price">
+              <input
+                style={inputStyle}
+                type="text"
+                value={option2Price}
+                onChange={(e) =>
+                  setOption2Price(e.target.value.replace(/[^\d]/g, ""))
+                }
+                onBlur={() =>
+                  setOption2Price(formatCurrency(option2Price))
+                }
+                onFocus={() => {
+                  const raw = parseCurrency(option2Price);
+                  setOption2Price(raw ? String(raw) : "");
+                }}
+                placeholder="$0"
+              />
+            </FormField>
+          </div>
+        </>
+      )}
+
       <SectionDivider />
 
-      {/* ── COCKTAIL OPTIONS TOGGLE ── */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: 20,
-        }}
-      >
-        <label
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: COLORS.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "0.04em",
-          }}
-        >
-          Show Cocktail Options
-        </label>
-        <ToggleSwitch checked={showCocktail} onChange={setShowCocktail} />
-      </div>
-
-      <SectionDivider />
-
-      {/* ── INTRO TEMPLATE SELECTOR ── */}
-      <FormField label="Intro Template">
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            flexWrap: "wrap",
-            marginBottom: 10,
-          }}
-        >
-          {INTRO_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.id}
-              onClick={() => handleTemplateSelect(tpl.id)}
-              style={{
-                padding: "5px 12px",
-                fontSize: 11,
-                fontWeight: selectedTemplate === tpl.id ? 600 : 500,
-                fontFamily: FONTS.body,
-                color:
-                  selectedTemplate === tpl.id ? COLORS.white : COLORS.textMuted,
-                background:
-                  selectedTemplate === tpl.id ? COLORS.black : COLORS.bg,
-                border: `1px solid ${
-                  selectedTemplate === tpl.id
-                    ? COLORS.black
-                    : COLORS.border
-                }`,
-                borderRadius: RADII.pill,
-                cursor: "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              {tpl.label}
-            </button>
-          ))}
-        </div>
-      </FormField>
-
-      {/* ── INTRO PARAGRAPH ── */}
-      <FormField label="Intro Paragraph">
+      {/* ── INTRO TEXT ── */}
+      <FormField label="Intro Text">
         <textarea
           style={{
             ...inputStyle,
-            minHeight: 100,
+            minHeight: 80,
             resize: "vertical",
             lineHeight: 1.6,
           }}
-          value={introParagraph}
-          onChange={(e) => {
-            setIntroParagraph(e.target.value);
-            if (selectedTemplate !== "custom") {
-              setSelectedTemplate("custom");
-            }
-          }}
-          placeholder="Write a venue-specific intro paragraph..."
+          value={introText}
+          onChange={(e) => setIntroText(e.target.value)}
+          placeholder="Write a personal note for the couple..."
         />
       </FormField>
 
       {/* ── GENERATE BUTTON ── */}
       <button
         onClick={handleGenerate}
-        disabled={generating || !primaryPackage}
+        disabled={generating || !config}
         style={{
           width: "100%",
           padding: "13px 20px",
@@ -778,10 +554,9 @@ const ProposalConfigPanel = ({ lead, onClose, onGenerate, onUpdateLead }) => {
           borderRadius: RADII.sm,
           fontSize: 13,
           fontWeight: 600,
-          cursor:
-            generating || !primaryPackage ? "not-allowed" : "pointer",
+          cursor: generating || !config ? "not-allowed" : "pointer",
           fontFamily: FONTS.body,
-          opacity: generating || !primaryPackage ? 0.7 : 1,
+          opacity: generating || !config ? 0.7 : 1,
           transition: "opacity 0.15s",
         }}
       >
