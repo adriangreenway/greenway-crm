@@ -45,35 +45,12 @@ const BAND_CONFIGS = {
   ],
 };
 
-// ── Upsell map: 6→10, 8→10, 10→14, 12→14, 14→null ──
-const UPSELL_MAP = {
-  '6 piece': '10 piece',
-  '8 piece': '10 piece',
-  '10 piece': '14 piece',
-  '12 piece': '14 piece',
-  '14 piece': null,
-};
-
-const PRICING = {
-  '6 piece': 9000,
-  '8 piece': 10750,
-  '10 piece': 12500,
-  '12 piece': 14750,
-  '14 piece': 16875,
-};
-
 const INCLUDED_SERVICES = [
   "Sound Equipment and Engineer",
   "Lighting Equipment and Engineer",
   "Emcee Services",
   "Personalized First Dances",
   "Song Requests",
-];
-
-const COCKTAIL_TIERS = [
-  { key: "solo", label: "Solo", desc: "One musician performing live during your cocktail hour", price: 1250 },
-  { key: "duo", label: "Duo", desc: "Two musicians for a richer, fuller cocktail hour sound", price: 1875 },
-  { key: "trio", label: "Trio", desc: "Three musicians delivering a complete cocktail hour experience", price: 2500 },
 ];
 
 const TESTIMONIALS = [
@@ -138,6 +115,17 @@ const getPackageSubtitle = (key) =>
     ? "Full reception entertainment + MC services + horn section"
     : "Reception entertainment + MC services";
 
+const formatTime = (time) => {
+  if (!time) return "";
+  if (/[AP]M/i.test(time)) return time;
+  const [h, m] = time.split(":");
+  const hour = parseInt(h, 10);
+  if (isNaN(hour)) return time;
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${h12}:${m} ${ampm}`;
+};
+
 // ── Injected CSS (matches template exactly) ──
 const PROPOSAL_CSS = `
   .gw-proposal * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -188,14 +176,6 @@ const PROPOSAL_CSS = `
   @keyframes gwPulse {
     0%, 100% { opacity: 0.3; }
     50% { opacity: 0.15; }
-  }
-
-  /* Options grid (dual package layout) */
-  .gw-proposal .gw-options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    margin-top: 48px;
   }
 
   /* Instrument list */
@@ -299,7 +279,6 @@ const PROPOSAL_CSS = `
 
   /* Responsive */
   @media (max-width: 600px) {
-    .gw-proposal .gw-options-grid { grid-template-columns: 1fr; gap: 56px; }
     .gw-proposal .gw-details-grid { grid-template-columns: 1fr !important; }
     .gw-proposal .gw-detail-cell { border-right: none !important; }
     .gw-proposal .gw-cover-names { font-size: 24px !important; }
@@ -310,7 +289,6 @@ const PROPOSAL_CSS = `
     .gw-proposal .gw-package-title { font-size: 24px !important; }
     .gw-proposal .gw-greeting { font-size: 22px !important; }
     .gw-proposal .gw-includes-grid { grid-template-columns: 1fr !important; }
-    .gw-proposal .gw-cocktail-grid { grid-template-columns: 1fr !important; }
   }
 
   .gw-proposal a { color: var(--cream-muted); text-decoration: none; }
@@ -400,8 +378,8 @@ const SectionLabel = ({ children, className }) => (
   </div>
 );
 
-// ── Reusable Option Column (used in single and dual layouts) ──
-const OptionColumn = ({ label, name, configKey, receptionStart, receptionEnd, price }) => {
+// ── Reusable Option Column (musicians + services only) ──
+const OptionColumn = ({ label, name, configKey }) => {
   const musicians = BAND_CONFIGS[configKey] || BAND_CONFIGS['10 piece'];
   const subtitle = getPackageSubtitle(configKey);
 
@@ -429,24 +407,6 @@ const OptionColumn = ({ label, name, configKey, receptionStart, receptionEnd, pr
           <li key={s}>{s}</li>
         ))}
       </ul>
-
-      {/* Performance Window */}
-      <div className="gw-col-label" style={{ marginTop: 28 }}>Performance Window</div>
-      <ul className="gw-services-list">
-        <li>Reception: {receptionStart} to {receptionEnd}</li>
-      </ul>
-
-      {/* Investment */}
-      {price && (
-        <div className="gw-price-row">
-          <span className="gw-price-label">Investment</span>
-          <span className="gw-option-price">{price}</span>
-        </div>
-      )}
-
-      <div className="gw-option-note">
-        Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
-      </div>
     </div>
   );
 };
@@ -669,34 +629,42 @@ const ProposalPublic = ({ slug }) => {
   const co = p.config_override || {};
   const p1First = p.partner1_first || "";
   const p2First = p.partner2_first || "";
-  const p1Full = `${p.partner1_first || ""} ${p.partner1_last || ""}`.trim();
-  const p2Full = `${p.partner2_first || ""} ${p.partner2_last || ""}`.trim();
   const dateLong = formatDateLong(p.event_date);
   const venue = p.venue || "";
-  const configKey = getConfigKey(co?.primary_package?.config || co?.package_name || p.config);
-  const packageName = co?.primary_package?.name || getDisplayName(configKey);
-  const price = formatPrice(p.price);
-  const primaryPrice = co.primary_package?.price ? formatPrice(co.primary_package.price) : price;
 
-  // Upsell: read upsell_config, fall back to upsell_package, fall back to UPSELL_MAP
-  const resolvedUpsell = co.upsell_config
-    || (co.upsell_package?.config ? getConfigKey(co.upsell_package.config) : null)
-    || UPSELL_MAP[configKey]
-    || null;
-  const hasUpsell = !!resolvedUpsell;
-  const upsellConfigKey = resolvedUpsell ? getConfigKey(resolvedUpsell) : null;
-  const upsellName = hasUpsell ? (co.upsell_package?.name || getDisplayName(upsellConfigKey)) : "";
-  const upsellPrice = hasUpsell
-    ? formatPrice(co.upsell_package?.price || PRICING[upsellConfigKey] || 0)
-    : "";
-  const hasCocktail = !!(co.cocktail_start && co.cocktail_end);
-  const cocktailStart = co.cocktail_start || "";
-  const cocktailEnd = co.cocktail_end || "";
-  const receptionStart = co.reception_start || "7:00 PM";
-  const receptionEnd = co.reception_end || "11:00 PM";
-  const introParagraph = co.intro_paragraph || "We're looking forward to bringing your evening to life.";
-  const showCocktailOptions = !!co.primary_package && co.show_cocktail !== false && co.cocktail_options?.length > 0;
-  const cocktailOptions = co.cocktail_options || ["solo", "duo", "trio"];
+  // Template type detection (backward compat: missing = Template A)
+  let templateType = co.template_type || "A";
+  if (!["A", "B", "C", "D"].includes(templateType)) templateType = "A";
+
+  // Package (handle both old and new schemas)
+  const configKey = getConfigKey(co.config || co.primary_package?.config || co.package_name || p.config);
+  const packageName = co.package_name || co.primary_package?.name || getDisplayName(configKey);
+  const primaryPrice = formatPrice(co.price ?? co.primary_package?.price ?? p.price);
+
+  // Times (handle both 24h and 12h formats)
+  const receptionStart = formatTime(co.reception_start || co.reception_start_24 || "19:00");
+  const receptionEnd = formatTime(co.reception_end || co.reception_end_24 || "23:00");
+  const cocktailStart = formatTime(co.cocktail_start || co.cocktail_start_24 || "");
+  const cocktailEnd = formatTime(co.cocktail_end || co.cocktail_end_24 || "");
+  const hasCocktailTimes = !!(cocktailStart && cocktailEnd);
+
+  // Option 2 (C/D templates)
+  const option2PackageName = co.option2_package_name || "The Greenway Band";
+  const option2ConfigKey = co.option2_config ? getConfigKey(co.option2_config) : null;
+  const option2Price = co.option2_price != null ? formatPrice(co.option2_price) : "";
+
+  // Validate: C/D need option2 data
+  if ((templateType === "C" || templateType === "D") && !option2ConfigKey) {
+    console.warn("Template C/D missing option2 data, falling back to Template A");
+    templateType = "A";
+  }
+
+  const showCocktailTimeline = (templateType === "B" || templateType === "D") && hasCocktailTimes;
+  const showOption2 = templateType === "C" || templateType === "D";
+
+  // Intro text (new schema: intro_text, old: intro_paragraph)
+  const introText = co.intro_text || co.intro_paragraph
+    || "We\u2019d love to be a part of your celebration. Here\u2019s everything you need to know about bringing the band to your event.";
 
   const contentStyle = {
     maxWidth: 640,
@@ -885,7 +853,7 @@ const ProposalPublic = ({ slug }) => {
             <p style={{ marginBottom: 20 }}>
               We know how much thought goes into every detail of your wedding, from the venue to the flowers to the food. The band is no different. It sets the tone for the entire night, and we take that seriously.
             </p>
-            <p style={{ marginBottom: 20 }}>{introParagraph}</p>
+            <p style={{ marginBottom: 20 }}>{introText}</p>
             <p style={{ marginBottom: 20 }}>
               From your cocktail hour through the last song of the night, our job is simple: make it feel like yours. Every transition, every song choice, every moment on the mic is tailored to you and your guests. We read the room and respond in real time, and that is what separates a great band from a playlist.
             </p>
@@ -932,70 +900,37 @@ const ProposalPublic = ({ slug }) => {
       <section style={{ padding: "80px 0" }}>
         <div
           className="gw-section-content"
-          style={{
-            maxWidth: hasUpsell ? 800 : 640,
-            margin: "0 auto",
-            padding: "0 32px",
-          }}
+          style={contentStyle}
         >
-          {hasUpsell ? (
-            /* ── DUAL PACKAGE LAYOUT ── */
+          {showOption2 ? (
+            /* ── TWO OPTIONS LAYOUT (C/D) ── */
             <>
               <SectionLabel className="reveal">Your options</SectionLabel>
-              <div
-                className="reveal reveal-delay-1"
-                style={{
-                  fontFamily: "'Bodoni Moda', serif",
-                  fontSize: "clamp(24px, 5vw, 28px)",
-                  color: "var(--cream)",
-                  fontWeight: 400,
-                  marginBottom: 8,
-                }}
-              >
-                Two Ways to Fill the Room
-              </div>
-              <div
-                className="reveal reveal-delay-1"
-                style={{
-                  fontSize: 12,
-                  color: "var(--cream-dim)",
-                  letterSpacing: "2px",
-                  textTransform: "uppercase",
-                  marginBottom: 0,
-                }}
-              >
-                Choose the configuration that fits your vision
-              </div>
-              <div className="reveal reveal-delay-2 gw-options-grid">
-                <OptionColumn
-                  label="Option A"
-                  name={packageName}
-                  configKey={configKey}
-                  receptionStart={receptionStart}
-                  receptionEnd={receptionEnd}
-                  price={primaryPrice}
-                />
-                <OptionColumn
-                  label="Option B"
-                  name={upsellName}
-                  configKey={upsellConfigKey}
-                  receptionStart={receptionStart}
-                  receptionEnd={receptionEnd}
-                  price={upsellPrice}
-                />
+              <div style={{ display: "flex", flexDirection: "column", gap: 56 }}>
+                <div className="reveal reveal-delay-1">
+                  <OptionColumn
+                    label="Option 1"
+                    name={packageName}
+                    configKey={configKey}
+                  />
+                </div>
+                <div className="reveal reveal-delay-2">
+                  <OptionColumn
+                    label="Option 2"
+                    name={option2PackageName}
+                    configKey={option2ConfigKey}
+                  />
+                </div>
               </div>
             </>
           ) : (
-            /* ── SINGLE PACKAGE LAYOUT ── */
+            /* ── SINGLE PACKAGE LAYOUT (A/B) ── */
             <>
               <SectionLabel className="reveal">Your package</SectionLabel>
               <div className="reveal reveal-delay-1">
                 <OptionColumn
                   name={packageName}
                   configKey={configKey}
-                  receptionStart={receptionStart}
-                  receptionEnd={receptionEnd}
-                  price={primaryPrice}
                 />
               </div>
             </>
@@ -1037,7 +972,7 @@ const ProposalPublic = ({ slug }) => {
           </div>
 
           <div className="reveal reveal-delay-2" style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-            {hasCocktail && (
+            {showCocktailTimeline && (
               <div
                 style={{
                   paddingBottom: 32,
@@ -1094,90 +1029,42 @@ const ProposalPublic = ({ slug }) => {
         </div>
       </section>
 
-      {/* Investment is now integrated into each package column */}
+      <Divider />
 
       {/* ════════════════════════════════════════ */}
-      {/* SECTION 5b: COCKTAIL HOUR OPTIONS        */}
+      {/* SECTION 5: INVESTMENT                   */}
       {/* ════════════════════════════════════════ */}
-      {showCocktailOptions && (
-        <>
-          <Divider />
-          <section style={{ padding: "80px 0" }}>
-            <div className="gw-section-content" style={contentStyle}>
-              <SectionLabel className="reveal">Cocktail hour</SectionLabel>
-              <div
-                className="reveal reveal-delay-1"
-                style={{
-                  fontFamily: "'Bodoni Moda', serif",
-                  fontSize: 20,
-                  color: "var(--cream)",
-                  fontWeight: 400,
-                  marginBottom: 16,
-                }}
-              >
-                Cocktail Hour
-              </div>
-              <div
-                className="reveal reveal-delay-1"
-                style={{
-                  fontSize: 13,
-                  color: "var(--cream-dim)",
-                  lineHeight: 1.8,
-                  fontWeight: 300,
-                  marginBottom: 48,
-                  maxWidth: 520,
-                }}
-              >
-                {hasCocktail
-                  ? `Your cocktail hour runs from ${cocktailStart} to ${cocktailEnd}. Live music during cocktails sets the tone before the reception begins. We offer acoustic arrangements tailored to the mood you want.`
-                  : "If you're planning a cocktail hour before the reception, live music sets the tone for everything that follows. We offer acoustic arrangements matched to the mood you want."}
-              </div>
+      <section style={{ padding: "80px 0" }}>
+        <div className="gw-section-content" style={contentStyle}>
+          <SectionLabel className="reveal">Investment</SectionLabel>
 
-              <div
-                className="reveal reveal-delay-2 gw-cocktail-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: 16,
-                }}
-              >
-                {COCKTAIL_TIERS.filter((t) => cocktailOptions.includes(t.key)).map((tier) => (
-                  <div
-                    key={tier.key}
-                    style={{
-                      border: "0.5px solid var(--border-light)",
-                      padding: "24px 16px",
-                      textAlign: "center",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 9,
-                        letterSpacing: "3px",
-                        textTransform: "uppercase",
-                        color: "var(--cream-dim)",
-                        marginBottom: 10,
-                      }}
-                    >
-                      {tier.label}
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "'Bodoni Moda', serif",
-                        fontSize: "clamp(18px, 4vw, 22px)",
-                        color: "var(--cream)",
-                        fontWeight: 400,
-                      }}
-                    >
-                      {formatPrice(tier.price)}
-                    </div>
-                  </div>
-                ))}
+          {showOption2 ? (
+            <div className="reveal reveal-delay-1">
+              <div className="gw-price-row" style={{ marginTop: 0 }}>
+                <span className="gw-price-label">Option 1</span>
+                <span className="gw-option-price">{primaryPrice}</span>
+              </div>
+              <div className="gw-price-row" style={{ borderTop: "none", marginTop: 0 }}>
+                <span className="gw-price-label">Option 2</span>
+                <span className="gw-option-price">{option2Price}</span>
               </div>
             </div>
-          </section>
-        </>
-      )}
+          ) : (
+            <div className="reveal reveal-delay-1">
+              <div className="gw-price-row" style={{ marginTop: 0 }}>
+                <span className="gw-price-label">Total</span>
+                <span className="gw-option-price">{primaryPrice}</span>
+              </div>
+            </div>
+          )}
+
+          <div
+            className="reveal reveal-delay-2 gw-option-note"
+          >
+            Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.
+          </div>
+        </div>
+      </section>
 
       <Divider />
 
@@ -1215,7 +1102,7 @@ const ProposalPublic = ({ slug }) => {
               { label: "Date", value: dateLong },
               { label: "Venue", value: venue },
               { label: "Event Type", value: "Wedding Reception" },
-              { label: "Cocktail Hour", value: hasCocktail ? `${cocktailStart} to ${cocktailEnd}` : "Available upon request" },
+              { label: "Cocktail Hour", value: hasCocktailTimes ? `${cocktailStart} to ${cocktailEnd}` : "Available upon request" },
               { label: "Reception", value: `${receptionStart} to ${receptionEnd}` },
               { label: "Configuration", value: packageName },
               { label: "Services", value: "Entertainment + MC" },
@@ -1289,7 +1176,7 @@ const ProposalPublic = ({ slug }) => {
                     marginBottom: 20,
                   }}
                 >
-                  "{t.quote}"
+                  &ldquo;{t.quote}&rdquo;
                 </div>
                 <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
                   <span
@@ -1332,12 +1219,12 @@ const ProposalPublic = ({ slug }) => {
               {
                 num: "01",
                 title: "Schedule a call",
-                desc: "Let's walk through the details together.",
+                desc: "Let\u2019s walk through the details together.",
               },
               {
                 num: "02",
                 title: "Review your contract",
-                desc: "We'll send everything over once we've connected.",
+                desc: "We\u2019ll send everything over once we\u2019ve connected.",
               },
               {
                 num: "03",
@@ -1435,7 +1322,7 @@ const ProposalPublic = ({ slug }) => {
               margin: "0 auto 48px",
             }}
           >
-            Your guests won't stop talking about it.
+            Your guests won&rsquo;t stop talking about it.
           </div>
 
           <div
