@@ -161,7 +161,7 @@ export const seedLeads = [
     venue: "River Oaks Country Club",
     guest_count: 150,
     brand: "Kirby Collective",
-    stage: "New Lead",
+    stage: "Lost",
     source: "Website",
     source_detail: null,
     config: "6 piece",
@@ -173,7 +173,7 @@ export const seedLeads = [
     notes: "Found us through Google. Interested in KC.",
     planner_name: null,
     planner_email: null,
-    lead_score: 22,
+    lead_score: 0,
     lead_score_updated_at: "2026-03-04T09:00:00Z",
   },
 ];
