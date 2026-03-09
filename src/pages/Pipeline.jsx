@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { COLORS, FONTS, RADII, PIPELINE_STAGES, SOURCES, CONFIGS } from "../tokens";
 import Icon from "../icons";
 import { BrandBadge, StageBadge } from "../components/Badge";
@@ -9,10 +9,13 @@ import ConsultationCheatSheet from "../components/ConsultationCheatSheet";
 import GigSheetPanel from "../components/GigSheetPanel";
 import MCCueSheet from "../components/MCCueSheet";
 import ProposalConfigPanel from "../components/ProposalConfigPanel";
+import ContractCard from "../components/ContractCard";
+import CreateContractModal from "../components/CreateContractModal";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
 import { callClaude, getApiKey, hasApiKey } from "../utils/claudeApi";
+import { getContractUrl } from "../utils/contractHelpers";
 
 // Normalize consultation_date to ISO with seconds and Z
 const normalizeConsultationDate = (val) => {
@@ -196,7 +199,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -238,7 +241,23 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState(null);
   const [pricingToast, setPricingToast] = useState(null);
+  const [drawerTab, setDrawerTab] = useState("details");
+  const [leadContracts, setLeadContracts] = useState([]);
+  const [contractsLoading, setContractsLoading] = useState(false);
+  const [showCreateContract, setShowCreateContract] = useState(false);
+  const [stagePromptContract, setStagePromptContract] = useState(null);
   const deleteTimerRef = useRef(null);
+
+  // Fetch contracts when Contracts tab is first opened
+  useEffect(() => {
+    if (drawerTab === "contracts" && lead && !isNew && fetchContracts) {
+      setContractsLoading(true);
+      fetchContracts(lead.id)
+        .then((data) => setLeadContracts(data || []))
+        .catch(() => setLeadContracts([]))
+        .finally(() => setContractsLoading(false));
+    }
+  }, [drawerTab, lead, isNew, fetchContracts]);
 
   useEffect(() => {
     if (confirmingDelete) {
@@ -380,6 +399,61 @@ Suggest a price for this lead.`;
     }
   };
 
+  const refreshContracts = async () => {
+    if (lead && fetchContracts) {
+      const data = await fetchContracts(lead.id);
+      setLeadContracts(data || []);
+    }
+  };
+
+  const handleContractCreate = async (payload) => {
+    await createContract(payload);
+    await refreshContracts();
+    setPricingToast("Contract created");
+    setTimeout(() => setPricingToast(null), 2500);
+  };
+
+  const handleContractSend = async (contract, isResend = false) => {
+    await sendContract(contract.id);
+    await refreshContracts();
+    const url = getContractUrl(contract.slug);
+    navigator.clipboard.writeText(url);
+    if (isResend) {
+      setPricingToast("Contract resent. Link copied.");
+      setTimeout(() => setPricingToast(null), 2500);
+    } else {
+      setStagePromptContract(contract);
+    }
+  };
+
+  const handleStageYes = async () => {
+    if (updateLead && lead) {
+      await updateLead(lead.id, { stage: "Contract Sent" });
+    }
+    setPricingToast("Contract sent. Link copied.");
+    setTimeout(() => setPricingToast(null), 2500);
+    setStagePromptContract(null);
+  };
+
+  const handleStageNo = () => {
+    setPricingToast("Link copied.");
+    setTimeout(() => setPricingToast(null), 2500);
+    setStagePromptContract(null);
+  };
+
+  const handleContractVoid = async (contract) => {
+    await voidContract(contract.id);
+    await refreshContracts();
+  };
+
+  const handleContractToast = (msg) => {
+    setPricingToast(msg);
+    setTimeout(() => setPricingToast(null), 2500);
+  };
+
+  const nonVoidedContracts = leadContracts.filter((c) => c.status !== "voided");
+  const canCreateContract = lead && lead.partner1_first && lead.partner1_last && lead.email && lead.event_date && lead.venue && lead.price;
+
   const title = isNew
     ? "New Lead"
     : getLeadName(form);
@@ -453,6 +527,187 @@ Suggest a price for this lead.`;
         );
       })()}
 
+      {/* Tab bar (only show for existing leads) */}
+      {!isNew && (
+        <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 20 }}>
+          {["details", "contracts"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setDrawerTab(tab)}
+              style={{
+                padding: "10px 16px",
+                fontSize: 13,
+                fontWeight: 600,
+                color: drawerTab === tab ? COLORS.black : COLORS.textMuted,
+                background: "none",
+                border: "none",
+                borderBottom: drawerTab === tab ? `2px solid ${COLORS.black}` : "2px solid transparent",
+                cursor: "pointer",
+                fontFamily: FONTS.body,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              {tab === "details" ? "Details" : "Contracts"}
+              {tab === "contracts" && nonVoidedContracts.length > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: COLORS.bg,
+                    color: COLORS.textMuted,
+                    padding: "1px 6px",
+                    borderRadius: RADII.pill,
+                    minWidth: 18,
+                    textAlign: "center",
+                  }}
+                >
+                  {nonVoidedContracts.length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Contracts Tab */}
+      {!isNew && drawerTab === "contracts" && (
+        <div>
+          {contractsLoading ? (
+            <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted, fontSize: 13 }}>
+              Loading contracts...
+            </div>
+          ) : leadContracts.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <Icon type="fileSignature" size={32} color={COLORS.border} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginTop: 12 }}>
+                No contract yet
+              </div>
+              <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 4 }}>
+                Create a contract to send for signing
+              </div>
+              <button
+                onClick={() => setShowCreateContract(true)}
+                disabled={!canCreateContract}
+                title={!canCreateContract ? "Complete lead details to create a contract" : undefined}
+                style={{
+                  marginTop: 16,
+                  background: COLORS.black,
+                  color: COLORS.white,
+                  padding: "10px 20px",
+                  borderRadius: RADII.sm,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: canCreateContract ? "pointer" : "not-allowed",
+                  fontFamily: FONTS.body,
+                  border: "none",
+                  opacity: canCreateContract ? 1 : 0.4,
+                }}
+              >
+                Create Contract
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {leadContracts.map((contract) => (
+                <div key={contract.id}>
+                  <ContractCard
+                    contract={contract}
+                    lead={lead}
+                    onSend={handleContractSend}
+                    onVoid={handleContractVoid}
+                    onFollowUp={onFollowUp}
+                    toast={handleContractToast}
+                  />
+                  {/* Stage prompt */}
+                  {stagePromptContract && stagePromptContract.id === contract.id && (
+                    <div
+                      style={{
+                        background: COLORS.bg,
+                        padding: 12,
+                        borderRadius: RADII.sm,
+                        marginTop: 8,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontSize: 13,
+                      }}
+                    >
+                      <span style={{ color: COLORS.text, fontWeight: 500 }}>Move to Contract Sent?</span>
+                      <button
+                        onClick={handleStageYes}
+                        style={{
+                          background: COLORS.black,
+                          color: COLORS.white,
+                          border: "none",
+                          borderRadius: RADII.sm,
+                          padding: "4px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontFamily: FONTS.body,
+                        }}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        onClick={handleStageNo}
+                        style={{
+                          background: COLORS.white,
+                          color: COLORS.text,
+                          border: `1px solid ${COLORS.border}`,
+                          borderRadius: RADII.sm,
+                          padding: "4px 12px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          fontFamily: FONTS.body,
+                        }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {/* Create another contract button */}
+              <button
+                onClick={() => setShowCreateContract(true)}
+                disabled={!canCreateContract}
+                title={!canCreateContract ? "Complete lead details to create a contract" : undefined}
+                style={{
+                  background: COLORS.bg,
+                  color: COLORS.text,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: RADII.sm,
+                  padding: "10px 16px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: canCreateContract ? "pointer" : "not-allowed",
+                  fontFamily: FONTS.body,
+                  opacity: canCreateContract ? 1 : 0.4,
+                }}
+              >
+                + New Contract
+              </button>
+            </div>
+          )}
+
+          {/* Create Contract Modal */}
+          {showCreateContract && (
+            <CreateContractModal
+              lead={lead}
+              onClose={() => setShowCreateContract(false)}
+              onCreate={handleContractCreate}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Details Tab (default — show for new leads or when Details tab active) */}
+      {(isNew || drawerTab === "details") && (
+      <>
       {/* Couple info */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <FormField label="Partner 1 First">
@@ -1253,6 +1508,8 @@ Suggest a price for this lead.`;
           </button>
         )}
       </div>
+      </>
+      )}
       </div>
 
       {/* Price applied toast */}
@@ -1281,7 +1538,7 @@ Suggest a price for this lead.`;
   );
 };
 
-const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment }) => {
+const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment, fetchContracts, createContract, sendContract, voidContract }) => {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [brandFilter, setBrandFilter] = useState("All");
@@ -1621,6 +1878,15 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
           onOpenProposalConfig={(l) => {
             setSelectedLead(null);
             setProposalConfigLead(l);
+          }}
+          fetchContracts={fetchContracts}
+          createContract={createContract}
+          sendContract={sendContract}
+          voidContract={voidContract}
+          updateLead={updateLead}
+          onFollowUp={(l) => {
+            setSelectedLead(null);
+            setEmailDraftLead(l);
           }}
         />
       )}

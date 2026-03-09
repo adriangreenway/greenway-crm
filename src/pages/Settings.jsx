@@ -132,11 +132,12 @@ function timeAgo(dateStr) {
   return `${diffDays}d ago`;
 }
 
-const Settings = () => {
+const Settings = ({ fetchAllContracts }) => {
   const [apiKey, setApiKey] = useState(
     () => localStorage.getItem("claude_api_key") || ""
   );
   const [saved, setSaved] = useState(false);
+  const [signedCount, setSignedCount] = useState(0);
 
   // Twilio state
   const [twilioConfigured, setTwilioConfigured] = useState(false);
@@ -176,6 +177,18 @@ const Settings = () => {
   useEffect(() => {
     checkTwilioStatus();
   }, []);
+
+  // Fetch signed contracts count
+  useEffect(() => {
+    if (fetchAllContracts) {
+      fetchAllContracts()
+        .then((contracts) => {
+          const signed = (contracts || []).filter((c) => c.status === "signed").length;
+          setSignedCount(signed);
+        })
+        .catch(() => setSignedCount(0));
+    }
+  }, [fetchAllContracts]);
 
   // Check for ?gcal=connected on mount
   useEffect(() => {
@@ -429,6 +442,20 @@ const Settings = () => {
                 Connect
               </button>
             )}
+          </IntegrationCard>
+
+          {/* E-Signature System */}
+          <IntegrationCard
+            icon="fileSignature"
+            title="E-Signature System"
+            description="Self-built contract signing on your domain"
+            below={
+              <span style={{ fontSize: 11, color: COLORS.textLight }}>
+                {signedCount} contract{signedCount === 1 ? "" : "s"} signed
+              </span>
+            }
+          >
+            <StatusBadge connected label="Active" />
           </IntegrationCard>
 
           {/* HoneyBook */}

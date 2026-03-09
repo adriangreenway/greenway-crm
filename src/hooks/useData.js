@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, supabaseConfigured } from "./useAuth";
-import { seedLeads, seedMusicians, testLeads } from "../data/seed";
+import { seedLeads, seedMusicians, testLeads, seedContracts } from "../data/seed";
 import { seedGalleries, seedSocialPosts } from "../data/socialSeed";
 import { calculateLeadScore } from "../utils/leadScoring";
 
@@ -11,6 +11,7 @@ export default function useData() {
   const [gigAssignments, setGigAssignments] = useState([]);
   const [galleries, setGalleries] = useState([]);
   const [socialPosts, setSocialPosts] = useState([]);
+  const [contracts, setContracts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -96,6 +97,29 @@ export default function useData() {
             );
           } else if (payload.eventType === "DELETE") {
             setLeads((prev) => prev.filter((l) => l.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    supabase
+      .channel("contracts-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "contracts" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setContracts((prev) =>
+              prev.some((c) => c.id === payload.new.id)
+                ? prev
+                : [payload.new, ...prev]
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setContracts((prev) =>
+              prev.map((c) => (c.id === payload.new.id ? payload.new : c))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setContracts((prev) => prev.filter((c) => c.id !== payload.old.id));
           }
         }
       )
@@ -760,6 +784,110 @@ export default function useData() {
     return data || [];
   }, []);
 
+  // ── Contract operations ──
+  const fetchContracts = useCallback(async (leadId) => {
+    if (!supabaseConfigured) {
+      return seedContracts.filter((c) => c.lead_id === leadId);
+    }
+    const { data, error } = await supabase
+      .from("contracts")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }, []);
+
+  const fetchAllContracts = useCallback(async () => {
+    if (!supabaseConfigured) return seedContracts;
+    const { data, error } = await supabase
+      .from("contracts")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    setContracts(data || []);
+    return data || [];
+  }, []);
+
+  const createContract = useCallback(async ({ lead_id, time_of_engagement, meal_count }) => {
+    const res = await fetch("/.netlify/functions/contract-create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lead_id, time_of_engagement, meal_count }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || "Failed to create contract");
+    // Refresh leads to get updated contract_data
+    if (supabaseConfigured) {
+      const { data: updatedLead } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", lead_id)
+        .single();
+      if (updatedLead) {
+        setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+      }
+    }
+    return result.contract;
+  }, []);
+
+  const sendContract = useCallback(async (contractId) => {
+    const res = await fetch("/.netlify/functions/contract-send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contract_id: contractId }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || "Failed to send contract");
+    // Refresh lead data
+    if (supabaseConfigured && result.contract) {
+      const { data: updatedLead } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", result.contract.lead_id)
+        .single();
+      if (updatedLead) {
+        setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+      }
+    }
+    return result.contract;
+  }, []);
+
+  const voidContract = useCallback(async (contractId) => {
+    if (!supabaseConfigured) return;
+    // Get contract first to find lead_id
+    const { data: contract } = await supabase
+      .from("contracts")
+      .select("id, lead_id, contract_number")
+      .eq("id", contractId)
+      .single();
+    if (!contract) throw new Error("Contract not found");
+    // Update contract
+    await supabase
+      .from("contracts")
+      .update({ status: "voided", voided_at: new Date().toISOString() })
+      .eq("id", contractId);
+    // Update lead contract_data
+    await supabase
+      .from("leads")
+      .update({
+        contract_data: {
+          contract_status: "voided",
+          contract_number: contract.contract_number,
+        },
+      })
+      .eq("id", contract.lead_id);
+    // Refresh lead
+    const { data: updatedLead } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", contract.lead_id)
+      .single();
+    if (updatedLead) {
+      setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+    }
+  }, []);
+
   return {
     leads,
     musicians,
@@ -767,6 +895,7 @@ export default function useData() {
     gigAssignments,
     galleries,
     socialPosts,
+    contracts,
     loading,
     error,
     addLead,
@@ -804,6 +933,13 @@ export default function useData() {
     createSmsMessage,
     // Calendar operations
     getExternalCalendarEvents,
+    // Contract operations
+    contracts,
+    fetchContracts,
+    fetchAllContracts,
+    createContract,
+    sendContract,
+    voidContract,
   };
 }
 

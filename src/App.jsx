@@ -369,6 +369,10 @@ export default function App() {
               gigAssignments={data.gigAssignments}
               addGigAssignment={data.addGigAssignment}
               removeGigAssignment={data.removeGigAssignment}
+              fetchContracts={data.fetchContracts}
+              createContract={data.createContract}
+              sendContract={data.sendContract}
+              voidContract={data.voidContract}
             />
           )}
           {activeNav === "calendar" && (
@@ -414,7 +418,7 @@ export default function App() {
               createSmsMessage={data.createSmsMessage}
             />
           )}
-          {activeNav === "settings" && <Settings />}
+          {activeNav === "settings" && <Settings fetchAllContracts={data.fetchAllContracts} />}
         </div>
       </div>
     </div>
