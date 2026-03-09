@@ -13,6 +13,7 @@ import AiCrew from "./pages/AiCrew";
 import Settings from "./pages/Settings";
 import MediaVaultPublic from "./components/MediaVaultPublic";
 import ProposalPublic from "./pages/ProposalPublic";
+import ContractPublic from "./pages/ContractPublic";
 
 // Login screen
 const LoginScreen = ({ onSignIn }) => {
@@ -206,6 +207,12 @@ export default function App() {
   const proposalMatch = path.match(/\/proposal\/(.+?)(?:\/)?$/);
   if (proposalMatch) {
     return <ProposalPublic slug={proposalMatch[1]} />;
+  }
+
+  // Public contract route — renders independently, no auth
+  const contractMatch = path.match(/\/contract\/(.+?)(?:\/)?$/);
+  if (contractMatch) {
+    return <ContractPublic slug={contractMatch[1]} />;
   }
 
   const {
