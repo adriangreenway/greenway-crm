@@ -148,6 +148,8 @@ export default function Planners({
   deletePlanner,
   searchPlanners,
   onOpenLead,
+  pendingPlannerId,
+  clearPendingPlanner,
 }) {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -157,6 +159,15 @@ export default function Planners({
   const [selectedPlanner, setSelectedPlanner] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
   const { show: showToast, Toast } = useToast();
+
+  // Auto-open planner drawer from cross-navigation
+  useEffect(() => {
+    if (pendingPlannerId) {
+      const planner = (planners || []).find((p) => p.id === pendingPlannerId);
+      if (planner) setSelectedPlanner(planner);
+      if (clearPendingPlanner) clearPendingPlanner();
+    }
+  }, [pendingPlannerId, planners, clearPendingPlanner]);
 
   // Debounce search
   useEffect(() => {

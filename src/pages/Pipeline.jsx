@@ -20,6 +20,7 @@ import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
 import { callClaude, getApiKey, hasApiKey } from "../utils/claudeApi";
 import { getContractUrl } from "../utils/contractHelpers";
 import { supabase } from "../hooks/useAuth";
+import PlannerTypeahead from "../components/PlannerTypeahead";
 
 // Normalize consultation_date to ISO with seconds and Z
 const normalizeConsultationDate = (val) => {
@@ -203,7 +204,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp, onOpenBookModal, uploadGceContract, removeGceContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp, onOpenBookModal, uploadGceContract, removeGceContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid, planners, createPlanner, onNavigateToPlanners, leads }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -391,6 +392,7 @@ Suggest a price for this lead.`;
         source_detail: form.source_detail || null,
         planner_name: form.planner_name || null,
         planner_email: form.planner_email || null,
+        planner_id: form.planner_id || null,
         config: form.config || null,
         event_date: form.event_date || null,
       };
@@ -1400,22 +1402,71 @@ Suggest a price for this lead.`;
       )}
 
       {/* Planner */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <FormField label="Planner Name">
-          <input
-            style={inputStyle}
-            value={form.planner_name || ""}
-            onChange={(e) => update("planner_name", e.target.value)}
-          />
-        </FormField>
-        <FormField label="Planner Email">
-          <input
-            style={inputStyle}
-            type="email"
-            value={form.planner_email || ""}
-            onChange={(e) => update("planner_email", e.target.value)}
-          />
-        </FormField>
+      <div style={{ borderLeft: form.source === "Planner" ? `3px solid ${COLORS.gold}` : "none", paddingLeft: form.source === "Planner" ? 12 : 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <FormField label="Planner Name">
+            <PlannerTypeahead
+              value={form.planner_name || ""}
+              onChange={(val) => update("planner_name", val)}
+              planners={planners || []}
+              selectedPlannerId={form.planner_id || null}
+              onSelectPlanner={(planner) => {
+                setForm((prev) => ({
+                  ...prev,
+                  planner_name: planner.name,
+                  planner_email: planner.email || prev.planner_email,
+                  planner_id: planner.id,
+                }));
+              }}
+              onClearPlanner={() => {
+                setForm((prev) => ({ ...prev, planner_id: null }));
+              }}
+              onCreatePlanner={async (name) => {
+                try {
+                  const newPlanner = await createPlanner({ name, tier: "new", first_contact_date: new Date().toISOString().split("T")[0] });
+                  if (newPlanner) {
+                    setForm((prev) => ({
+                      ...prev,
+                      planner_name: newPlanner.name,
+                      planner_id: newPlanner.id,
+                    }));
+                  }
+                } catch (err) {
+                  console.error("Failed to create planner:", err);
+                }
+              }}
+              inputStyle={inputStyle}
+            />
+          </FormField>
+          <FormField label="Planner Email">
+            <input
+              style={inputStyle}
+              type="email"
+              value={form.planner_email || ""}
+              onChange={(e) => update("planner_email", e.target.value)}
+            />
+          </FormField>
+        </div>
+        {form.planner_id && (() => {
+          const linked = (leads || []).filter((l) => l.planner_id === form.planner_id);
+          const booked = linked.filter((l) => ["Booked", "Fulfilled"].includes(l.stage));
+          const revenue = linked.filter((l) => l.stage !== "Lost").reduce((sum, l) => sum + (l.price || 0), 0);
+          return (
+            <div style={{ marginTop: 6 }}>
+              <div style={{ fontSize: 12, color: COLORS.textMuted }}>
+                {booked.length} booked / {linked.length} total · {revenue ? `$${revenue.toLocaleString()}` : "$0"} revenue
+              </div>
+              <div
+                onClick={() => onNavigateToPlanners && onNavigateToPlanners(form.planner_id)}
+                style={{ fontSize: 12, color: COLORS.gold, cursor: "pointer", marginTop: 4 }}
+                onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+              >
+                View planner profile →
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Inquiry Details (collapsible, only for leads from lead router) */}
@@ -1795,7 +1846,7 @@ Suggest a price for this lead.`;
   );
 };
 
-const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment, fetchContracts, createContract, sendContract, voidContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid }) => {
+const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment, fetchContracts, createContract, sendContract, voidContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid, planners, createPlanner, onNavigateToPlanners }) => {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [brandFilter, setBrandFilter] = useState("All");
@@ -2181,6 +2232,10 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
           createInvoice={createInvoice}
           sendInvoice={sendInvoice}
           markInvoicePaid={markInvoicePaid}
+          planners={planners}
+          createPlanner={createPlanner}
+          onNavigateToPlanners={onNavigateToPlanners}
+          leads={leads}
         />
       )}
 
@@ -2211,6 +2266,10 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
           onSave={handleSaveNew}
           onDelete={() => {}}
           onClose={() => setIsAddingNew(false)}
+          planners={planners}
+          createPlanner={createPlanner}
+          onNavigateToPlanners={onNavigateToPlanners}
+          leads={leads}
         />
       )}
 

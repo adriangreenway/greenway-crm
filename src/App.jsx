@@ -236,6 +236,7 @@ export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingLeadId, setPendingLeadId] = useState(null);
   const [pendingAction, setPendingAction] = useState(null);
+  const [pendingPlannerId, setPendingPlannerId] = useState(null);
   const windowWidth = useWindowWidth();
 
   // Responsive: > 1024 = full, 768-1024 = collapsed, < 768 = hidden
@@ -259,6 +260,12 @@ export default function App() {
   const handleAddLead = useCallback(() => {
     setPendingAction("addLead");
     setActiveNav("pipeline");
+  }, []);
+
+  // Navigate to planners and open a specific planner's drawer
+  const handleOpenPlanner = useCallback((plannerId) => {
+    setPendingPlannerId(plannerId);
+    setActiveNav("planners");
   }, []);
 
   // Loading state
@@ -393,6 +400,9 @@ export default function App() {
               createInvoice={data.createInvoice}
               sendInvoice={data.sendInvoice}
               markInvoicePaid={data.markInvoicePaid}
+              planners={data.planners}
+              createPlanner={data.createPlanner}
+              onNavigateToPlanners={handleOpenPlanner}
             />
           )}
           {activeNav === "planners" && (
@@ -405,6 +415,8 @@ export default function App() {
               deletePlanner={data.deletePlanner}
               searchPlanners={data.searchPlanners}
               onOpenLead={handleOpenLead}
+              pendingPlannerId={pendingPlannerId}
+              clearPendingPlanner={() => setPendingPlannerId(null)}
             />
           )}
           {activeNav === "calendar" && (
