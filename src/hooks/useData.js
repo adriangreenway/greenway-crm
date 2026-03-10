@@ -230,9 +230,30 @@ export default function useData() {
     []
   );
 
+  const refreshLeads = useCallback(async () => {
+    if (!supabaseConfigured) return;
+    const { data, error } = await supabase
+      .from("leads")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (!error && data) {
+      const supaIds = new Set(data.map((l) => l.id));
+      const merged = [...data, ...testLeads.filter((t) => !supaIds.has(t.id))];
+      setLeads(merged);
+    }
+  }, []);
+
   const updateLead = useCallback(
     async (id, updates) => {
       const now = new Date().toISOString();
+      // Auto-set payment_routing when source changes
+      if ("source" in updates) {
+        if (updates.source === "GCE") {
+          updates.payment_routing = "gce";
+        } else if (updates.source !== undefined) {
+          updates.payment_routing = "direct";
+        }
+      }
       // Merge updates with existing lead to calculate accurate score
       const existingLead = leadsRef.current.find((l) => l.id === id) || {};
       const merged = { ...existingLead, ...updates };
@@ -888,6 +909,34 @@ export default function useData() {
     }
   }, []);
 
+  // ── GCE Contract operations ──
+  const uploadGceContract = useCallback(async (leadId, file) => {
+    if (!supabaseConfigured) throw new Error("Supabase not configured");
+    const path = `gce/${leadId}/contract.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from("contract-pdfs")
+      .upload(path, file, { upsert: true, contentType: "application/pdf" });
+    if (uploadError) throw uploadError;
+
+    await supabase
+      .from("leads")
+      .update({ gce_contract_path: path })
+      .eq("id", leadId);
+
+    await refreshLeads();
+    return path;
+  }, [refreshLeads]);
+
+  const removeGceContract = useCallback(async (leadId, path) => {
+    if (!supabaseConfigured) return;
+    await supabase.storage.from("contract-pdfs").remove([path]);
+    await supabase
+      .from("leads")
+      .update({ gce_contract_path: null })
+      .eq("id", leadId);
+    await refreshLeads();
+  }, [refreshLeads]);
+
   return {
     leads,
     musicians,
@@ -940,6 +989,10 @@ export default function useData() {
     createContract,
     sendContract,
     voidContract,
+    // GCE contract operations
+    uploadGceContract,
+    removeGceContract,
+    refreshLeads,
   };
 }
 

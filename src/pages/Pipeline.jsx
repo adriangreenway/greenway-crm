@@ -11,11 +11,13 @@ import MCCueSheet from "../components/MCCueSheet";
 import ProposalConfigPanel from "../components/ProposalConfigPanel";
 import ContractCard from "../components/ContractCard";
 import CreateContractModal from "../components/CreateContractModal";
+import BookClientModal from "../components/BookClientModal";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
 import { callClaude, getApiKey, hasApiKey } from "../utils/claudeApi";
 import { getContractUrl } from "../utils/contractHelpers";
+import { supabase } from "../hooks/useAuth";
 
 // Normalize consultation_date to ISO with seconds and Z
 const normalizeConsultationDate = (val) => {
@@ -199,7 +201,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp, onOpenBookModal, uploadGceContract, removeGceContract }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -267,7 +269,14 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   }, [confirmingDelete]);
 
   const update = (key, value) => {
-    setForm((f) => ({ ...f, [key]: value }));
+    setForm((f) => {
+      const updated = { ...f, [key]: value };
+      // Auto-set payment_routing when source changes
+      if (key === "source") {
+        updated.payment_routing = value === "GCE" ? "gce" : "direct";
+      }
+      return updated;
+    });
     if (["config", "venue", "guest_count", "event_date"].includes(key)) {
       setPricingSuggestion(null);
       setPricingError(null);
@@ -524,6 +533,38 @@ Suggest a price for this lead.`;
               </div>
             )}
           </div>
+        );
+      })()}
+
+      {/* Book Client button */}
+      {!isNew && !['Contract Sent', 'Booked', 'Fulfilled', 'Lost'].includes(form.stage) && (() => {
+        const isGce = form.payment_routing === 'gce';
+        const directMissing = !isGce && (!form.partner1_first || !form.email || !form.event_date || !form.venue || !form.config || !parseCurrency(form.price));
+        const gceMissing = isGce && (!form.partner1_first || !form.event_date || !form.venue || !form.config || !parseCurrency(form.price));
+        const bookDisabled = directMissing || gceMissing;
+        return (
+          <button
+            onClick={() => onOpenBookModal && onOpenBookModal()}
+            disabled={bookDisabled}
+            title={bookDisabled ? "Fill in required fields before booking" : undefined}
+            style={{
+              background: COLORS.black,
+              color: COLORS.white,
+              border: 'none',
+              borderRadius: RADII.sm,
+              padding: '8px 16px',
+              fontSize: 12,
+              fontWeight: 600,
+              fontFamily: FONTS.body,
+              cursor: bookDisabled ? 'not-allowed' : 'pointer',
+              opacity: bookDisabled ? 0.4 : 1,
+              transition: 'opacity 0.15s',
+              marginBottom: 16,
+              width: '100%',
+            }}
+          >
+            Book Client
+          </button>
         );
       })()}
 
@@ -849,6 +890,16 @@ Suggest a price for this lead.`;
             onChange={(e) => update("source_detail", e.target.value)}
             placeholder="Planner name, agent, etc."
           />
+        </FormField>
+        <FormField label="Payment Routing">
+          <select
+            style={selectStyle}
+            value={form.payment_routing || "direct"}
+            onChange={(e) => update("payment_routing", e.target.value)}
+          >
+            <option value="direct">Direct</option>
+            <option value="gce">GCE</option>
+          </select>
         </FormField>
       </div>
 
@@ -1370,6 +1421,76 @@ Suggest a price for this lead.`;
         </>
       )}
 
+      {/* GCE Contract nudge */}
+      {!isNew && form.payment_routing === 'gce' && form.stage === 'Booked' && !lead.gce_contract_path && (
+        <div style={{
+          background: COLORS.amberLight,
+          borderLeft: `3px solid ${COLORS.amber}`,
+          borderRadius: RADII.sm,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.amber }}>
+            GCE contract not uploaded
+          </span>
+          <label style={{ fontSize: 12, fontWeight: 600, color: COLORS.amber, cursor: 'pointer' }}>
+            Upload
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file && uploadGceContract) {
+                  try {
+                    await uploadGceContract(lead.id, file);
+                    setPricingToast("GCE contract uploaded");
+                    setTimeout(() => setPricingToast(null), 2500);
+                  } catch (err) {
+                    setPricingToast("Upload failed");
+                    setTimeout(() => setPricingToast(null), 2500);
+                  }
+                }
+              }}
+            />
+          </label>
+        </div>
+      )}
+      {!isNew && lead?.gce_contract_path && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.textLight, marginBottom: 8 }}>
+            GCE CONTRACT
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <a
+              href={`${import.meta.env.VITE_SUPABASE_URL || ''}/storage/v1/object/public/contract-pdfs/${lead.gce_contract_path}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: 13, color: COLORS.black, fontWeight: 600, textDecoration: 'underline' }}
+            >
+              View Contract PDF
+            </a>
+            <button
+              onClick={async () => {
+                if (window.confirm('Remove GCE contract PDF?')) {
+                  if (removeGceContract) {
+                    await removeGceContract(lead.id, lead.gce_contract_path);
+                    setPricingToast("GCE contract removed");
+                    setTimeout(() => setPricingToast(null), 2500);
+                  }
+                }
+              }}
+              style={{ fontSize: 12, color: COLORS.textLight, background: 'none', border: 'none', cursor: 'pointer', fontFamily: FONTS.body }}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Notes */}
       <FormField label="Notes">
         <textarea
@@ -1550,8 +1671,37 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
   const [gigSheetLead, setGigSheetLead] = useState(null);
   const [cueSheetLead, setCueSheetLead] = useState(null);
   const [proposalConfigLead, setProposalConfigLead] = useState(null);
+  const [showBookModal, setShowBookModal] = useState(false);
+  const [pipelineSession, setPipelineSession] = useState(null);
   // Score sort: null = default, "desc" = highest first, "asc" = lowest first
   const [scoreSort, setScoreSort] = useState(null);
+
+  // Get session for authenticated operations
+  useEffect(() => {
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setPipelineSession(session);
+      });
+    }
+  }, []);
+
+  // GCE contract upload/remove helpers
+  const uploadGceContract = useCallback(async (leadId, file) => {
+    if (!supabase) throw new Error("Supabase not configured");
+    const path = `gce/${leadId}/contract.pdf`;
+    const { error: uploadError } = await supabase.storage
+      .from("contract-pdfs")
+      .upload(path, file, { upsert: true, contentType: "application/pdf" });
+    if (uploadError) throw uploadError;
+    await supabase.from("leads").update({ gce_contract_path: path }).eq("id", leadId);
+    return path;
+  }, []);
+
+  const removeGceContract = useCallback(async (leadId, path) => {
+    if (!supabase) return;
+    await supabase.storage.from("contract-pdfs").remove([path]);
+    await supabase.from("leads").update({ gce_contract_path: null }).eq("id", leadId);
+  }, []);
 
   // Open a lead from external navigation (e.g., Dashboard click)
   useEffect(() => {
@@ -1888,6 +2038,29 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
             setSelectedLead(null);
             setEmailDraftLead(l);
           }}
+          onOpenBookModal={() => setShowBookModal(true)}
+          uploadGceContract={uploadGceContract}
+          removeGceContract={removeGceContract}
+        />
+      )}
+
+      {/* Book Client Modal */}
+      {showBookModal && selectedLead && (
+        <BookClientModal
+          lead={selectedLead}
+          onClose={() => setShowBookModal(false)}
+          onSuccess={() => {
+            // Re-fetch the lead to get updated data
+            if (selectedLead && updateLead) {
+              // Trigger a no-op update to refresh via realtime, or just rely on realtime subscription
+            }
+          }}
+          onOpenEmailDrafter={(lead) => {
+            setShowBookModal(false);
+            setEmailDraftLead(lead);
+          }}
+          onUploadGceContract={uploadGceContract}
+          session={pipelineSession}
         />
       )}
 
