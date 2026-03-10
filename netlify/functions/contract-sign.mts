@@ -622,6 +622,36 @@ export default async (req: Request) => {
       })
       .eq("id", contract.lead_id);
 
+    // === WEEK 10 ADDITION: SMS to band on contract signing ===
+    const bandPhone = process.env.BAND_NOTIFICATION_PHONE;
+    if (bandPhone && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+      try {
+        const partner2 = lead.partner2_first ? ` & ${lead.partner2_first}` : '';
+        const eventDate = new Date(lead.event_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const message = `Contract signed: ${lead.partner1_first}${partner2}, ${eventDate}, ${lead.venue}, ${lead.config}`;
+
+        await fetch(`https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': 'Basic ' + Buffer.from(`${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`).toString('base64')
+          },
+          body: new URLSearchParams({
+            To: bandPhone,
+            From: process.env.TWILIO_PHONE_NUMBER,
+            Body: message
+          })
+        });
+        console.log('Band notification SMS sent for contract signing');
+      } catch (smsError) {
+        console.error('Band notification SMS failed (non-blocking):', smsError);
+        // Non-blocking — signing is already recorded, PDF is already generated
+      }
+    } else {
+      console.log('BAND_NOTIFICATION_PHONE not configured, skipping SMS');
+    }
+    // === END WEEK 10 ADDITION ===
+
     return Response.json(
       {
         success: true,

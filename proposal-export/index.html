@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Greenway Band — Phase & Six</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0A0A09; }
+    /* Override reveal animations for static export */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+    .reveal.visible {
+      opacity: 1 !important;
+      transform: translateY(0) !important;
+    }
+    .reveal-delay-1 { transition-delay: 0.15s; }
+    .reveal-delay-2 { transition-delay: 0.3s; }
+    .reveal-delay-3 { transition-delay: 0.45s; }
+  </style>
+  <style>* { box-sizing: border-box; margin: 0px; padding: 0px; }
+body { background: rgb(250, 250, 249); font-family: "Plus Jakarta Sans", sans-serif; color: rgb(10, 10, 9); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgb(232, 229, 224); border-radius: 10px; }
+@keyframes fadeUp { 
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0px); }
+}
+@keyframes fadeIn { 
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes slideIn { 
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0px); }
+}
+@keyframes slideInLeft { 
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0px); }
+}
+@keyframes spin { 
+  100% { transform: rotate(360deg); }
+}
+@keyframes shake { 
+  0%, 100% { transform: translateX(0px); }
+  10%, 50%, 90% { transform: translateX(-6px); }
+  30%, 70% { transform: translateX(6px); }
+}</style>
+  <style>* { box-sizing: border-box; margin: 0px; padding: 0px; }
+body { background: rgb(250, 250, 249); font-family: "Plus Jakarta Sans", sans-serif; color: rgb(10, 10, 9); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-thumb { background: rgb(232, 229, 224); border-radius: 10px; }
+@keyframes fadeUp { 
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0px); }
+}
+@keyframes fadeIn { 
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes slideIn { 
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0px); }
+}
+@keyframes slideInLeft { 
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0px); }
+}
+@keyframes spin { 
+  100% { transform: rotate(360deg); }
+}</style>
+  <style>.gw-proposal * { margin: 0px; padding: 0px; box-sizing: border-box; }
+.gw-proposal { --black: #0A0A09; --charcoal: #111110; --charcoal-mid: #1A1A18; --cream: #F5F2ED; --cream-muted: #D4D0C8; --cream-dim: #8A867E; --cream-faint: #5A5750; --border: rgba(245,242,237,0.08); --border-light: rgba(245,242,237,0.12); font-family: "Plus Jakarta Sans", sans-serif; background: var(--black); color: var(--cream); -webkit-font-smoothing: antialiased; overflow-x: hidden; min-height: 100vh; }
+.gw-proposal .reveal { opacity: 0; transform: translateY(20px); transition: opacity 0.8s, transform 0.8s; }
+.gw-proposal .reveal.visible { opacity: 1; transform: translateY(0px); }
+.gw-proposal .reveal-delay-1 { transition-delay: 0.1s; }
+.gw-proposal .reveal-delay-2 { transition-delay: 0.2s; }
+.gw-proposal .reveal-delay-3 { transition-delay: 0.3s; }
+.gw-proposal .reveal-delay-4 { transition-delay: 0.4s; }
+.gw-proposal .reveal-delay-5 { transition-delay: 0.5s; }
+.gw-proposal .section-content { max-width: 680px; margin: 0px auto; padding: 0px 40px; }
+.gw-proposal .section-divider { width: 100%; height: 1px; background: var(--border-light); }
+.gw-proposal .section-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 32px; }
+.gw-proposal .cover { min-height: 100dvh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 80px 40px; position: relative; }
+.gw-proposal .cover-rule { width: 60px; height: 0.5px; background: var(--cream-dim); margin: 0px auto; }
+.gw-proposal .cover-the { font-family: "Bodoni Moda", serif; font-size: 12px; letter-spacing: 10px; text-transform: uppercase; color: var(--cream-dim); margin-top: 40px; text-indent: 10px; }
+.gw-proposal .cover-name { font-family: "Bodoni Moda", serif; font-size: clamp(28px, 8vw, 42px); letter-spacing: 5px; text-transform: uppercase; color: var(--cream); margin: 4px 0px; font-weight: 400; text-indent: 5px; }
+.gw-proposal .cover-band { font-family: "Plus Jakarta Sans", sans-serif; font-size: 11px; letter-spacing: 14px; text-transform: uppercase; color: var(--cream-dim); font-weight: 400; text-indent: 14px; }
+.gw-proposal .cover-descriptor { font-family: "Bodoni Moda", serif; font-style: italic; font-size: 14px; color: var(--cream-dim); margin-top: 24px; letter-spacing: 1.5px; }
+.gw-proposal .cover-couple { margin-top: 80px; text-align: center; }
+.gw-proposal .cover-prepared { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 16px; }
+.gw-proposal .cover-couple-names { font-family: "Bodoni Moda", serif; font-size: clamp(22px, 6vw, 28px); color: var(--cream); font-weight: 400; letter-spacing: 1px; }
+.gw-proposal .cover-couple-names em { font-style: italic; font-weight: 400; color: var(--cream-muted); font-size: 0.78em; }
+.gw-proposal .cover-details { margin-top: 24px; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-dim); line-height: 2; }
+.gw-proposal .cover-footer { position: absolute; bottom: 48px; left: 0px; right: 0px; text-align: center; }
+.gw-proposal .cover-footer p { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-faint); opacity: 0.6; }
+.gw-proposal .intro { padding: 80px 0px; }
+.gw-proposal .intro-greeting { font-family: "Bodoni Moda", serif; font-size: clamp(24px, 5vw, 32px); color: var(--cream); font-weight: 400; line-height: 1.3; margin-bottom: 40px; }
+.gw-proposal .intro-body { font-size: 14px; line-height: 1.9; color: var(--cream-muted); max-width: 540px; }
+.gw-proposal .intro-body p { margin-bottom: 20px; }
+.gw-proposal .intro-body p:last-child { margin-bottom: 0px; }
+.gw-proposal .intro-signature { margin-top: 48px; padding-top: 32px; border-top: 0.5px solid var(--border-light); }
+.gw-proposal .intro-signature .sig-name { font-family: "Bodoni Moda", serif; font-size: 16px; color: var(--cream); margin-bottom: 4px; }
+.gw-proposal .intro-signature .sig-title { font-size: 11px; color: var(--cream-dim); letter-spacing: 2px; text-transform: uppercase; }
+.gw-proposal .package-section { padding: 80px 0px; }
+.gw-proposal .package-section .section-content { max-width: 840px; }
+.gw-proposal .package-title { font-family: "Bodoni Moda", serif; font-size: clamp(24px, 5vw, 28px); color: var(--cream); font-weight: 400; margin-bottom: 8px; }
+.gw-proposal .package-subtitle { font-size: 12px; color: var(--cream-dim); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 48px; }
+.gw-proposal .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+.gw-proposal .options-grid > div { display: flex; flex-direction: column; }
+.gw-proposal .options-grid .price-block { margin-top: auto; }
+.gw-proposal .option-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 12px; }
+.gw-proposal .option-title { font-family: "Bodoni Moda", serif; font-size: 22px; color: var(--cream); font-weight: 400; margin-bottom: 4px; }
+.gw-proposal .option-subtitle { font-size: 11px; color: var(--cream-dim); letter-spacing: 1px; margin-bottom: 32px; }
+.gw-proposal .pkg-section-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 20px; }
+.gw-proposal .instrument-list { list-style: none; }
+.gw-proposal .instrument-list li { font-size: 14px; color: var(--cream-muted); padding: 10px 0px; border-bottom: 0.5px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+.gw-proposal .instrument-list li:last-child { border-bottom: none; }
+.gw-proposal .instrument-list li .count { font-size: 11px; color: var(--cream-faint); letter-spacing: 1px; }
+.gw-proposal .services-list { list-style: none; }
+.gw-proposal .services-list li { font-size: 13px; color: var(--cream-muted); padding: 8px 0px; border-bottom: 0.5px solid var(--border); }
+.gw-proposal .services-list li:last-child { border-bottom: none; }
+.gw-proposal .price-row { display: flex; justify-content: space-between; align-items: baseline; padding: 32px 0px; border-top: 0.5px solid var(--border-light); border-bottom: 0.5px solid var(--border-light); margin-top: 24px; }
+.gw-proposal .price-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-dim); }
+.gw-proposal .price-amount { font-family: "Bodoni Moda", serif; font-size: clamp(28px, 5vw, 36px); color: var(--cream); font-weight: 400; }
+.gw-proposal .package-note { font-size: 11px; color: var(--cream-faint); line-height: 1.8; margin-top: 24px; }
+.gw-proposal .single-pkg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+.gw-proposal .details-section { padding: 80px 0px; }
+.gw-proposal .details-title { font-family: "Bodoni Moda", serif; font-size: clamp(24px, 5vw, 28px); color: var(--cream); font-weight: 400; margin-bottom: 48px; }
+.gw-proposal .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0px; border: 0.5px solid var(--border-light); border-radius: 2px; margin-bottom: 48px; }
+.gw-proposal .detail-cell { padding: 28px 32px; border-bottom: 0.5px solid var(--border); border-right: 0.5px solid var(--border); }
+.gw-proposal .detail-cell:nth-child(2n) { border-right: none; }
+.gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: none; }
+.gw-proposal .detail-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 8px; }
+.gw-proposal .detail-value { font-family: "Bodoni Moda", serif; font-size: 16px; color: var(--cream); font-weight: 400; }
+.gw-proposal .addon-section { margin-top: 8px; padding-top: 40px; border-top: 0.5px solid var(--border-light); }
+.gw-proposal .addon-title { font-family: "Bodoni Moda", serif; font-size: 20px; color: var(--cream); font-weight: 400; margin-bottom: 8px; }
+.gw-proposal .addon-desc { font-size: 13px; color: var(--cream-dim); line-height: 1.7; margin-bottom: 28px; max-width: 480px; }
+.gw-proposal .addon-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.gw-proposal .addon-card { padding: 24px; border: 0.5px solid var(--border-light); border-radius: 2px; text-align: center; }
+.gw-proposal .addon-card .addon-type { font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-dim); margin-bottom: 12px; }
+.gw-proposal .addon-card .addon-price { font-family: "Bodoni Moda", serif; font-size: 22px; color: var(--cream); }
+.gw-proposal .testimonials-section { padding: 80px 0px; }
+.gw-proposal .testimonial-block { margin-bottom: 48px; }
+.gw-proposal .testimonial-block:last-of-type { margin-bottom: 0px; }
+.gw-proposal .testimonial-quote-mark { font-family: "Bodoni Moda", serif; font-size: 64px; color: var(--cream-faint); line-height: 0.5; margin-bottom: 16px; opacity: 0.4; }
+.gw-proposal .testimonial-text { font-family: "Bodoni Moda", serif; font-size: clamp(16px, 3.5vw, 18px); font-style: italic; color: var(--cream); line-height: 1.7; max-width: 520px; margin-bottom: 20px; }
+.gw-proposal .testimonial-stars { color: var(--cream-dim); font-size: 12px; letter-spacing: 4px; margin-bottom: 4px; }
+.gw-proposal .testimonial-attr { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--cream-dim); }
+.gw-proposal .testimonial-divider { width: 40px; height: 0.5px; background: var(--border-light); margin: 40px 0px; }
+.gw-proposal .steps-section { padding: 80px 0px; }
+.gw-proposal .step-block { padding-bottom: 36px; border-bottom: 0.5px solid var(--border-light); margin-bottom: 36px; }
+.gw-proposal .step-block:last-of-type { border-bottom: none; margin-bottom: 0px; padding-bottom: 0px; }
+.gw-proposal .step-number { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-faint); margin-bottom: 12px; }
+.gw-proposal .step-title { font-family: "Bodoni Moda", serif; font-size: 20px; color: var(--cream); font-weight: 400; margin-bottom: 8px; }
+.gw-proposal .step-desc { font-size: 13px; color: var(--cream-dim); line-height: 1.6; }
+.gw-proposal .steps-contact { margin-top: 48px; padding-top: 32px; border-top: 0.5px solid var(--border-light); text-align: center; }
+.gw-proposal .steps-contact p { font-size: 12px; color: var(--cream-dim); letter-spacing: 2px; line-height: 2.4; }
+.gw-proposal .closing { padding: 100px 40px 80px; text-align: center; }
+.gw-proposal .closing-phrase { font-family: "Bodoni Moda", serif; font-style: italic; font-size: clamp(22px, 5vw, 26px); color: var(--cream); line-height: 1.5; max-width: 400px; margin: 0px auto 56px; }
+.gw-proposal .closing-rule { width: 40px; height: 0.5px; background: var(--cream-dim); margin: 0px auto 40px; }
+.gw-proposal .closing-contact { margin-bottom: 12px; }
+.gw-proposal .closing-contact p { font-size: 12px; color: var(--cream-dim); letter-spacing: 2px; line-height: 2.2; }
+.gw-proposal .closing-website { font-size: 13px; letter-spacing: 3px; text-transform: uppercase; color: var(--cream-muted); margin-top: 24px; }
+.gw-proposal .closing-logo { margin-top: 64px; }
+.gw-proposal .closing-logo .logo-the { font-family: "Bodoni Moda", serif; font-size: 10px; letter-spacing: 8px; text-transform: uppercase; color: var(--cream-faint); text-indent: 8px; }
+.gw-proposal .closing-logo .logo-name { font-family: "Bodoni Moda", serif; font-size: 24px; letter-spacing: 4px; text-transform: uppercase; color: var(--cream); margin: 2px 0px; font-weight: 400; text-indent: 4px; }
+.gw-proposal .closing-logo .logo-band { font-family: "Plus Jakarta Sans", sans-serif; font-size: 8px; letter-spacing: 12px; text-transform: uppercase; color: var(--cream-faint); text-indent: 12px; }
+.gw-proposal .closing-validity { margin-top: 48px; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--cream-faint); }
+.gw-proposal a { color: var(--cream-muted); text-decoration: none; }
+.gw-proposal a:hover { color: var(--cream); }
+@media (max-width: 640px) {
+  .gw-proposal .section-content { padding: 0px 24px !important; }
+  .gw-proposal .cover { padding: 60px 24px !important; }
+  .gw-proposal .options-grid { grid-template-columns: 1fr !important; gap: 56px !important; }
+  .gw-proposal .single-pkg-grid { grid-template-columns: 1fr !important; }
+  .gw-proposal .details-grid { grid-template-columns: 1fr !important; }
+  .gw-proposal .detail-cell { border-right: none !important; }
+  .gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: 0.5px solid var(--border) !important; }
+  .gw-proposal .detail-cell:last-child { border-bottom: none !important; }
+  .gw-proposal .addon-options { grid-template-columns: 1fr !important; gap: 12px !important; }
+  .gw-proposal .closing { padding: 80px 24px 60px !important; }
+}</style>
+  <style>
+    
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #FAFAF9; font-family: 'Plus Jakarta Sans', sans-serif; color: #0A0A09; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #E8E5E0; border-radius: 10px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 50%, 90% { transform: translateX(-6px); }
+      30%, 70% { transform: translateX(6px); }
+    }
+  </style>
+  <style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #FAFAF9; font-family: 'Plus Jakarta Sans', sans-serif; color: #0A0A09; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-thumb { background: #E8E5E0; border-radius: 10px; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes slideInLeft {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+  <style>
+  .gw-proposal * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .gw-proposal {
+    --black: #0A0A09;
+    --charcoal: #111110;
+    --charcoal-mid: #1A1A18;
+    --cream: #F5F2ED;
+    --cream-muted: #D4D0C8;
+    --cream-dim: #8A867E;
+    --cream-faint: #5A5750;
+    --border: rgba(245,242,237,0.08);
+    --border-light: rgba(245,242,237,0.12);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--black);
+    color: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* Reveal system */
+  .gw-proposal .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .gw-proposal .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .gw-proposal .reveal-delay-1 { transition-delay: 0.1s; }
+  .gw-proposal .reveal-delay-2 { transition-delay: 0.2s; }
+  .gw-proposal .reveal-delay-3 { transition-delay: 0.3s; }
+  .gw-proposal .reveal-delay-4 { transition-delay: 0.4s; }
+  .gw-proposal .reveal-delay-5 { transition-delay: 0.5s; }
+
+  /* Section content wrapper */
+  .gw-proposal .section-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* Section divider */
+  .gw-proposal .section-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  /* Section label */
+  .gw-proposal .section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 32px;
+  }
+
+  /* Cover */
+  .gw-proposal .cover {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 80px 40px;
+    position: relative;
+  }
+  .gw-proposal .cover-rule {
+    width: 60px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto;
+  }
+  .gw-proposal .cover-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 12px;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-top: 40px;
+    text-indent: 10px;
+  }
+  .gw-proposal .cover-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(28px, 8vw, 42px);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 4px 0;
+    font-weight: 400;
+    text-indent: 5px;
+  }
+  .gw-proposal .cover-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    letter-spacing: 14px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    font-weight: 400;
+    text-indent: 14px;
+  }
+  .gw-proposal .cover-descriptor {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--cream-dim);
+    margin-top: 24px;
+    letter-spacing: 1.5px;
+  }
+  .gw-proposal .cover-couple {
+    margin-top: 80px;
+    text-align: center;
+  }
+  .gw-proposal .cover-prepared {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 16px;
+  }
+  .gw-proposal .cover-couple-names {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(22px, 6vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .gw-proposal .cover-couple-names em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--cream-muted);
+    font-size: 0.78em;
+  }
+  .gw-proposal .cover-details {
+    margin-top: 24px;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    line-height: 2;
+  }
+  .gw-proposal .cover-footer {
+    position: absolute;
+    bottom: 48px;
+    left: 0;
+    right: 0;
+    text-align: center;
+  }
+  .gw-proposal .cover-footer p {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    opacity: 0.6;
+  }
+
+  /* Intro */
+  .gw-proposal .intro { padding: 80px 0; }
+  .gw-proposal .intro-greeting {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 32px);
+    color: var(--cream);
+    font-weight: 400;
+    line-height: 1.3;
+    margin-bottom: 40px;
+  }
+  .gw-proposal .intro-body {
+    font-size: 14px;
+    line-height: 1.9;
+    color: var(--cream-muted);
+    max-width: 540px;
+  }
+  .gw-proposal .intro-body p { margin-bottom: 20px; }
+  .gw-proposal .intro-body p:last-child { margin-bottom: 0; }
+  .gw-proposal .intro-signature {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 0.5px solid var(--border-light);
+  }
+  .gw-proposal .intro-signature .sig-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 16px;
+    color: var(--cream);
+    margin-bottom: 4px;
+  }
+  .gw-proposal .intro-signature .sig-title {
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Package / Options */
+  .gw-proposal .package-section { padding: 80px 0; }
+  .gw-proposal .package-section .section-content { max-width: 840px; }
+  .gw-proposal .package-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .package-subtitle {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 48px;
+  }
+  .gw-proposal .options-grid > div {
+    display: flex;
+    flex-direction: column;
+  }
+  .gw-proposal .options-grid .price-block { margin-top: auto; }
+  .gw-proposal .option-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .option-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 22px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 4px;
+  }
+  .gw-proposal .option-subtitle {
+    font-size: 11px;
+    color: var(--cream-dim);
+    letter-spacing: 1px;
+    margin-bottom: 32px;
+  }
+  .gw-proposal .pkg-section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 20px;
+  }
+  .gw-proposal .instrument-list { list-style: none; }
+  .gw-proposal .instrument-list li {
+    font-size: 14px;
+    color: var(--cream-muted);
+    padding: 10px 0;
+    border-bottom: 0.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .gw-proposal .instrument-list li:last-child { border-bottom: none; }
+  .gw-proposal .instrument-list li .count {
+    font-size: 11px;
+    color: var(--cream-faint);
+    letter-spacing: 1px;
+  }
+  .gw-proposal .services-list { list-style: none; }
+  .gw-proposal .services-list li {
+    font-size: 13px;
+    color: var(--cream-muted);
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .gw-proposal .services-list li:last-child { border-bottom: none; }
+  .gw-proposal .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 32px 0;
+    border-top: 0.5px solid var(--border-light);
+    border-bottom: 0.5px solid var(--border-light);
+    margin-top: 24px;
+  }
+  .gw-proposal .price-label {
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+  }
+  .gw-proposal .price-amount {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(28px, 5vw, 36px);
+    color: var(--cream);
+    font-weight: 400;
+  }
+  .gw-proposal .package-note {
+    font-size: 11px;
+    color: var(--cream-faint);
+    line-height: 1.8;
+    margin-top: 24px;
+  }
+
+  /* Single-package two-column grid (A/B) */
+  .gw-proposal .single-pkg-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+  }
+
+  /* Event Details */
+  .gw-proposal .details-section { padding: 80px 0; }
+  .gw-proposal .details-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(24px, 5vw, 28px);
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 0.5px solid var(--border-light);
+    border-radius: 2px;
+    margin-bottom: 48px;
+  }
+  .gw-proposal .detail-cell {
+    padding: 28px 32px;
+    border-bottom: 0.5px solid var(--border);
+    border-right: 0.5px solid var(--border);
+  }
+  .gw-proposal .detail-cell:nth-child(even) { border-right: none; }
+  .gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: none; }
+  .gw-proposal .detail-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 8px;
+  }
+  .gw-proposal .detail-value {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 16px;
+    color: var(--cream);
+    font-weight: 400;
+  }
+
+  /* Cocktail Hour Add-On */
+  .gw-proposal .addon-section {
+    margin-top: 8px;
+    padding-top: 40px;
+    border-top: 0.5px solid var(--border-light);
+  }
+  .gw-proposal .addon-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 20px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .addon-desc {
+    font-size: 13px;
+    color: var(--cream-dim);
+    line-height: 1.7;
+    margin-bottom: 28px;
+    max-width: 480px;
+  }
+  .gw-proposal .addon-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+  }
+  .gw-proposal .addon-card {
+    padding: 24px;
+    border: 0.5px solid var(--border-light);
+    border-radius: 2px;
+    text-align: center;
+  }
+  .gw-proposal .addon-card .addon-type {
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .addon-card .addon-price {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 22px;
+    color: var(--cream);
+  }
+
+  /* Testimonials */
+  .gw-proposal .testimonials-section { padding: 80px 0; }
+  .gw-proposal .testimonial-block { margin-bottom: 48px; }
+  .gw-proposal .testimonial-block:last-of-type { margin-bottom: 0; }
+  .gw-proposal .testimonial-quote-mark {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 64px;
+    color: var(--cream-faint);
+    line-height: 0.5;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .gw-proposal .testimonial-text {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(16px, 3.5vw, 18px);
+    font-style: italic;
+    color: var(--cream);
+    line-height: 1.7;
+    max-width: 520px;
+    margin-bottom: 20px;
+  }
+  .gw-proposal .testimonial-stars {
+    color: var(--cream-dim);
+    font-size: 12px;
+    letter-spacing: 4px;
+    margin-bottom: 4px;
+  }
+  .gw-proposal .testimonial-attr {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+  }
+  .gw-proposal .testimonial-divider {
+    width: 40px;
+    height: 0.5px;
+    background: var(--border-light);
+    margin: 40px 0;
+  }
+
+  /* Next Steps */
+  .gw-proposal .steps-section { padding: 80px 0; }
+  .gw-proposal .step-block {
+    padding-bottom: 36px;
+    border-bottom: 0.5px solid var(--border-light);
+    margin-bottom: 36px;
+  }
+  .gw-proposal .step-block:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+  .gw-proposal .step-number {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-proposal .step-title {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 20px;
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+  .gw-proposal .step-desc {
+    font-size: 13px;
+    color: var(--cream-dim);
+    line-height: 1.6;
+  }
+  .gw-proposal .steps-contact {
+    margin-top: 48px;
+    padding-top: 32px;
+    border-top: 0.5px solid var(--border-light);
+    text-align: center;
+  }
+  .gw-proposal .steps-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.4;
+  }
+
+  /* Closing */
+  .gw-proposal .closing {
+    padding: 100px 40px 80px;
+    text-align: center;
+  }
+  .gw-proposal .closing-phrase {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: clamp(22px, 5vw, 26px);
+    color: var(--cream);
+    line-height: 1.5;
+    max-width: 400px;
+    margin: 0 auto 56px;
+  }
+  .gw-proposal .closing-rule {
+    width: 40px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto 40px;
+  }
+  .gw-proposal .closing-contact { margin-bottom: 12px; }
+  .gw-proposal .closing-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.2;
+  }
+  .gw-proposal .closing-website {
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-muted);
+    margin-top: 24px;
+  }
+  .gw-proposal .closing-logo { margin-top: 64px; }
+  .gw-proposal .closing-logo .logo-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 10px;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 8px;
+  }
+  .gw-proposal .closing-logo .logo-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 2px 0;
+    font-weight: 400;
+    text-indent: 4px;
+  }
+  .gw-proposal .closing-logo .logo-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 8px;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 12px;
+  }
+  .gw-proposal .closing-validity {
+    margin-top: 48px;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+  }
+
+  /* Links */
+  .gw-proposal a { color: var(--cream-muted); text-decoration: none; }
+  .gw-proposal a:hover { color: var(--cream); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .gw-proposal .section-content { padding: 0 24px !important; }
+    .gw-proposal .cover { padding: 60px 24px !important; }
+    .gw-proposal .options-grid { grid-template-columns: 1fr !important; gap: 56px !important; }
+    .gw-proposal .single-pkg-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .details-grid { grid-template-columns: 1fr !important; }
+    .gw-proposal .detail-cell { border-right: none !important; }
+    .gw-proposal .detail-cell:nth-last-child(-n+2) { border-bottom: 0.5px solid var(--border) !important; }
+    .gw-proposal .detail-cell:last-child { border-bottom: none !important; }
+    .gw-proposal .addon-options { grid-template-columns: 1fr !important; gap: 12px !important; }
+    .gw-proposal .closing { padding: 80px 24px 60px !important; }
+  }
+</style>
+</head>
+<body>
+  
+    <div id="root"><div class="gw-proposal"><section class="cover"><div><div class="cover-rule"></div><div class="cover-the">THE</div><div class="cover-name">GREENWAY</div><div class="cover-band">BAND</div><div class="cover-rule" style="margin-top: 16px;"></div><div class="cover-descriptor">The sound of a great night.</div></div><div class="cover-couple"><div class="cover-prepared">Prepared for</div><div class="cover-couple-names">Phase <em>&amp;</em> Six</div><div class="cover-details">March 10, 2026<br>iron manor</div></div><div class="cover-footer"><p>greenwayband.com &nbsp;·&nbsp; adrian@greenwayband.com</p></div></section><div class="section-divider"></div><section class="intro"><div class="section-content"><div class="section-label reveal" style="opacity: 1; transform: translateY(0px);">A note for you</div><div class="intro-greeting reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);">Phase and Six,<br>congratulations.</div><div class="intro-body reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><p>We know how much thought goes into every detail of your wedding. The venue, the flowers, the food. The band is no different. It sets the tone for the entire night, and we take that seriously.</p><p>From your cocktail hour through the last song of the night, our job is simple: make it feel like yours. Every transition, every song choice, every moment on the mic is tailored to you and your guests. We read the room and respond in real time. That is what separates a great band from a playlist.</p><p>We would love to be part of your night.</p></div><div class="intro-signature reveal reveal-delay-3" style="opacity: 1; transform: translateY(0px);"><div class="sig-name">Adrian Michael</div><div class="sig-title">The Greenway Band</div></div></div></section><div class="section-divider"></div><section class="package-section"><div class="section-content"><div class="section-label reveal" style="opacity: 1; transform: translateY(0px);">Your package</div><div class="package-title reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);">The Greenway Band</div><div class="package-subtitle reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);">Full reception entertainment + MC services + horn section</div><div class="single-pkg-grid reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><div><div class="pkg-section-label">Musicians</div><ul class="instrument-list"><li>Vocals<span class="count">3</span></li><li>Keys<span class="count">1</span></li><li>Guitar<span class="count">1</span></li><li>Bass<span class="count">1</span></li><li>Drums<span class="count">1</span></li><li>Horns<span class="count">3</span></li></ul></div><div><div class="pkg-section-label">Included Services</div><ul class="services-list"><li>Sound Equipment and Engineer</li><li>Lighting Equipment and Engineer</li><li>Emcee Services</li><li>Personalized First Dance</li><li>Song Requests</li></ul><div class="pkg-section-label" style="margin-top: 32px;">Performance Window</div><ul class="services-list"><li>Reception: 7:00 PM to 11:00 PM</li></ul></div></div><div class="reveal reveal-delay-3" style="opacity: 1; transform: translateY(0px);"><div class="price-row"><span class="price-label">Investment</span><span class="price-amount">$14,375</span></div><div class="package-note">Additional instrumentation available upon request. Travel fee may apply for events over 50 miles from Houston.</div></div></div></section><div class="section-divider"></div><section class="details-section"><div class="section-content"><div class="section-label reveal" style="opacity: 1; transform: translateY(0px);">Event details</div><div class="details-title reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);">Your Evening</div><div class="details-grid reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><div class="detail-cell"><div class="detail-label">Couple</div><div class="detail-value">Phase &amp; Six</div></div><div class="detail-cell"><div class="detail-label">Date</div><div class="detail-value">March 10, 2026</div></div><div class="detail-cell"><div class="detail-label">Venue</div><div class="detail-value">iron manor</div></div><div class="detail-cell"><div class="detail-label">Event Type</div><div class="detail-value">Wedding Reception</div></div><div class="detail-cell"><div class="detail-label">Cocktail Hour</div><div class="detail-value">Available upon request</div></div><div class="detail-cell"><div class="detail-label">Reception</div><div class="detail-value">7:00 PM to 11:00 PM</div></div><div class="detail-cell"><div class="detail-label">Configuration</div><div class="detail-value">The Greenway Band</div></div><div class="detail-cell"><div class="detail-label">Services</div><div class="detail-value">Entertainment + MC</div></div></div></div></section><div class="section-divider"></div><section class="testimonials-section"><div class="section-content"><div class="section-label reveal" style="opacity: 1; transform: translateY(0px);">What couples say</div><div class="testimonial-block reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);"><div class="testimonial-quote-mark">“</div><div class="testimonial-text">Our wedding guests danced the night away like I've never seen before.</div><div class="testimonial-stars">&amp;starf; &amp;starf; &amp;starf; &amp;starf; &amp;starf;</div><div class="testimonial-attr">Emma B. &nbsp;·&nbsp; WeddingWire</div></div><div class="testimonial-divider"></div><div class="testimonial-block reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><div class="testimonial-quote-mark">“</div><div class="testimonial-text">You and the Greenway Band were a hit at the wedding at the Grand Galvez. From start to finish, the songs, the sound, and the look of the band were all just amazing. You left our guests wanting more.</div><div class="testimonial-stars">&amp;starf; &amp;starf; &amp;starf; &amp;starf; &amp;starf;</div><div class="testimonial-attr">Allison &nbsp;·&nbsp; WeddingWire</div></div><div class="testimonial-divider"></div><div class="testimonial-block reveal reveal-delay-3" style="opacity: 1; transform: translateY(0px);"><div class="testimonial-quote-mark">“</div><div class="testimonial-text">Every guest was on their feet by the second song. We still have people texting us about the band three months later.</div><div class="testimonial-stars">&amp;starf; &amp;starf; &amp;starf; &amp;starf; &amp;starf;</div><div class="testimonial-attr">Sarah &amp; James H. &nbsp;·&nbsp; WeddingWire</div></div></div></section><div class="section-divider"></div><section class="steps-section"><div class="section-content"><div class="section-label reveal" style="opacity: 1; transform: translateY(0px);">Next steps</div><div class="step-block reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);"><div class="step-number">Step 01</div><div class="step-title">Schedule a call</div><div class="step-desc">Let’s walk through the details together.</div></div><div class="step-block reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><div class="step-number">Step 02</div><div class="step-title">Review your contract</div><div class="step-desc">We’ll send everything over once we’ve connected.</div></div><div class="step-block reveal reveal-delay-3" style="opacity: 1; transform: translateY(0px);"><div class="step-number">Step 03</div><div class="step-title">Reserve your date</div><div class="step-desc">A 50% deposit locks in your evening.</div></div><div class="steps-contact reveal reveal-delay-4" style="opacity: 1; transform: translateY(0px);"><p>adrian@greenwayband.com</p><p>(281) 467 1226</p></div></div></section><div class="section-divider"></div><section class="closing"><div class="closing-phrase reveal" style="opacity: 1; transform: translateY(0px);">Your guests won’t stop talking about it.</div><div class="closing-rule reveal reveal-delay-1" style="opacity: 1; transform: translateY(0px);"></div><div class="closing-contact reveal reveal-delay-2" style="opacity: 1; transform: translateY(0px);"><p>Adrian Michael</p><p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p><p>(281) 467 1226</p></div><div class="closing-website reveal reveal-delay-3" style="opacity: 1; transform: translateY(0px);">greenwayband.com</div><div class="closing-logo reveal reveal-delay-4" style="opacity: 1; transform: translateY(0px);"><div class="cover-rule" style="margin-bottom: 16px;"></div><div class="logo-the">THE</div><div class="logo-name">GREENWAY</div><div class="logo-band">BAND</div><div class="cover-rule" style="margin-top: 12px;"></div></div><div class="closing-validity reveal reveal-delay-5" style="opacity: 1; transform: translateY(0px);">This proposal is valid for 30 days from date of receipt.</div></section></div></div>
+  <script defer="" src="https://static.cloudflareinsights.com/beacon.min.js/v8c78df7c7c0f484497ecbca7046644da1771523124516" integrity="sha512-8DS7rgIrAmghBFwoOTujcf6D9rXvH8xm8JQ1Ja01h9QX8EzXldiszufYa4IFfKdLUKTTrnSFXLDkUEOTrZQ8Qg==" data-cf-beacon="{&quot;version&quot;:&quot;2024.11.0&quot;,&quot;token&quot;:&quot;16f92091fc234eeeafaa692b05f3bd78&quot;,&quot;r&quot;:1,&quot;server_timing&quot;:{&quot;name&quot;:{&quot;cfCacheStatus&quot;:true,&quot;cfEdge&quot;:true,&quot;cfExtPri&quot;:true,&quot;cfL4&quot;:true,&quot;cfOrigin&quot;:true,&quot;cfSpeedBrain&quot;:true},&quot;location_startswith&quot;:null}}" crossorigin="anonymous"></script>
+
+
+
+  <script>
+    // Scroll-reveal observer for static export
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(24px)';
+      observer.observe(el);
+    });
+  </script>
+</body>
+</html>
