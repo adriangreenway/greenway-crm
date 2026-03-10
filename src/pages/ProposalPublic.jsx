@@ -809,7 +809,7 @@ const ProposalPublic = ({ slug }) => {
 
   const configKey = getConfigKey(co.config || co.primary_package?.config || co.package_name || p.config);
   const packageName = co.package_name || co.primary_package?.name || getDisplayName(configKey);
-  const primaryPrice = formatPrice(co.price ?? co.primary_package?.price ?? p.price);
+  const primaryPrice = formatPrice(co.price || co.primary_package?.price || p.price);
 
   const receptionStart = formatTime(co.reception_start || co.reception_start_24 || "19:00");
   const receptionEnd = formatTime(co.reception_end || co.reception_end_24 || "23:00");
@@ -1085,7 +1085,7 @@ const ProposalPublic = ({ slug }) => {
             <div className="testimonial-text">
               Our wedding guests danced the night away like I've never seen before.
             </div>
-            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-stars">★ ★ ★ ★ ★</div>
             <div className="testimonial-attr">Emma B. &nbsp;&middot;&nbsp; WeddingWire</div>
           </div>
 
@@ -1096,7 +1096,7 @@ const ProposalPublic = ({ slug }) => {
             <div className="testimonial-text">
               You and the Greenway Band were a hit at the wedding at the Grand Galvez. From start to finish, the songs, the sound, and the look of the band were all just amazing. You left our guests wanting more.
             </div>
-            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-stars">★ ★ ★ ★ ★</div>
             <div className="testimonial-attr">Allison &nbsp;&middot;&nbsp; WeddingWire</div>
           </div>
 
@@ -1107,7 +1107,7 @@ const ProposalPublic = ({ slug }) => {
             <div className="testimonial-text">
               Every guest was on their feet by the second song. We still have people texting us about the band three months later.
             </div>
-            <div className="testimonial-stars">&starf; &starf; &starf; &starf; &starf;</div>
+            <div className="testimonial-stars">★ ★ ★ ★ ★</div>
             <div className="testimonial-attr">Sarah &amp; James H. &nbsp;&middot;&nbsp; WeddingWire</div>
           </div>
         </div>

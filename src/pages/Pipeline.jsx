@@ -1079,8 +1079,12 @@ Suggest a price for this lead.`;
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                 <button
-                  onClick={() => {
-                    update("price", fmtCurrency(pricingSuggestion.suggested_price));
+                  onClick={async () => {
+                    const priceInt = Math.round(Number(pricingSuggestion.suggested_price));
+                    update("price", fmtCurrency(priceInt));
+                    if (updateLead && lead) {
+                      await updateLead(lead.id, { price: priceInt });
+                    }
                     setPricingToast("Price applied");
                     setTimeout(() => setPricingToast(null), 2500);
                   }}
