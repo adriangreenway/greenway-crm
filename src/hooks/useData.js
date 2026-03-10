@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase, supabaseConfigured } from "./useAuth";
-import { seedLeads, seedMusicians, testLeads, seedContracts } from "../data/seed";
+import { seedLeads, seedMusicians, testLeads, seedContracts, seedPlanners } from "../data/seed";
 import { seedGalleries, seedSocialPosts } from "../data/socialSeed";
 import { calculateLeadScore } from "../utils/leadScoring";
 
@@ -12,6 +12,7 @@ export default function useData() {
   const [galleries, setGalleries] = useState([]);
   const [socialPosts, setSocialPosts] = useState([]);
   const [contracts, setContracts] = useState([]);
+  const [planners, setPlanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -31,19 +32,21 @@ export default function useData() {
       setContacts([]);
       setGalleries(seedGalleries);
       setSocialPosts(seedSocialPosts);
+      setPlanners(seedPlanners);
       setLoading(false);
     }
   }, []);
 
   const loadFromSupabase = async () => {
     try {
-      const [leadsRes, musiciansRes, contactsRes, gigAssignRes, galleriesRes, socialRes] = await Promise.all([
+      const [leadsRes, musiciansRes, contactsRes, gigAssignRes, galleriesRes, socialRes, plannersRes] = await Promise.all([
         supabase.from("leads").select("*").order("created_at", { ascending: false }),
         supabase.from("musicians").select("*").order("name"),
         supabase.from("contacts").select("*").order("name"),
         supabase.from("gig_assignments").select("*"),
         supabase.from("galleries").select("*").order("created_at", { ascending: false }),
         supabase.from("social_posts").select("*").order("scheduled_date", { ascending: true }),
+        supabase.from("planners").select("*").order("name"),
       ]);
 
       if (leadsRes.error) throw leadsRes.error;
@@ -52,6 +55,7 @@ export default function useData() {
       if (gigAssignRes.error) throw gigAssignRes.error;
       if (galleriesRes.error) throw galleriesRes.error;
       if (socialRes.error) throw socialRes.error;
+      if (plannersRes.error) throw plannersRes.error;
 
       // Merge test leads (dedup by id so they always appear in Pipeline)
       const supaLeads = leadsRes.data || [];
@@ -63,6 +67,7 @@ export default function useData() {
       setGigAssignments(gigAssignRes.data || []);
       setGalleries(galleriesRes.data?.length ? galleriesRes.data : seedGalleries);
       setSocialPosts(socialRes.data?.length ? socialRes.data : seedSocialPosts);
+      setPlanners(plannersRes.data?.length ? plannersRes.data : seedPlanners);
     } catch (err) {
       console.warn("Supabase load failed, falling back to seed data:", err.message);
       setLeads([...seedLeads, ...testLeads]);
@@ -70,6 +75,7 @@ export default function useData() {
       setContacts([]);
       setGalleries(seedGalleries);
       setSocialPosts(seedSocialPosts);
+      setPlanners(seedPlanners);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -120,6 +126,29 @@ export default function useData() {
             );
           } else if (payload.eventType === "DELETE") {
             setContracts((prev) => prev.filter((c) => c.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    supabase
+      .channel("planners-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "planners" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            setPlanners((prev) =>
+              prev.some((p) => p.id === payload.new.id)
+                ? prev
+                : [...prev, payload.new]
+            );
+          } else if (payload.eventType === "UPDATE") {
+            setPlanners((prev) =>
+              prev.map((p) => (p.id === payload.new.id ? payload.new : p))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setPlanners((prev) => prev.filter((p) => p.id !== payload.old.id));
           }
         }
       )
@@ -990,6 +1019,92 @@ export default function useData() {
     return data;
   }, []);
 
+  // ── Planner operations ──
+  const fetchPlanners = useCallback(async () => {
+    if (!supabaseConfigured) return seedPlanners;
+    const { data, error } = await supabase
+      .from("planners")
+      .select("*")
+      .order("name");
+    if (error) { console.warn("Planner fetch error:", error.message); return seedPlanners; }
+    setPlanners(data?.length ? data : seedPlanners);
+    return data || [];
+  }, []);
+
+  const createPlanner = useCallback(async (plannerData) => {
+    if (!supabaseConfigured) {
+      const newPlanner = {
+        ...plannerData,
+        id: "planner-" + Date.now(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setPlanners((prev) => [...prev, newPlanner].sort((a, b) => a.name.localeCompare(b.name)));
+      return newPlanner;
+    }
+    const { data, error } = await supabase
+      .from("planners")
+      .insert(plannerData)
+      .select()
+      .single();
+    if (error) throw error;
+    setPlanners((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+    return data;
+  }, []);
+
+  const updatePlanner = useCallback(async (id, updates) => {
+    if (!supabaseConfigured) {
+      setPlanners((prev) =>
+        prev.map((p) =>
+          p.id === id ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+        )
+      );
+      return { id, ...updates };
+    }
+    const { data, error } = await supabase
+      .from("planners")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    setPlanners((prev) => prev.map((p) => (p.id === data.id ? data : p)));
+    return data;
+  }, []);
+
+  const deletePlanner = useCallback(async (id) => {
+    if (!supabaseConfigured) {
+      setPlanners((prev) => prev.filter((p) => p.id !== id));
+      setLeads((prev) =>
+        prev.map((l) => (l.planner_id === id ? { ...l, planner_id: null } : l))
+      );
+      return;
+    }
+    // Unlink leads first
+    try {
+      await supabase.from("leads").update({ planner_id: null }).eq("planner_id", id);
+    } catch (err) {
+      console.warn("Failed to unlink leads from planner:", err.message);
+    }
+    const { error } = await supabase.from("planners").delete().eq("id", id);
+    if (error) throw error;
+    setPlanners((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
+  const searchPlanners = useCallback(
+    (query) => {
+      if (!query) return planners;
+      const q = query.toLowerCase();
+      return planners.filter(
+        (p) =>
+          p.name?.toLowerCase().includes(q) ||
+          p.company?.toLowerCase().includes(q) ||
+          p.venues?.some((v) => v.toLowerCase().includes(q))
+      );
+    },
+    [planners]
+  );
+
   // ── GCE Contract operations ──
   const uploadGceContract = useCallback(async (leadId, file) => {
     if (!supabaseConfigured) throw new Error("Supabase not configured");
@@ -1079,6 +1194,13 @@ export default function useData() {
     createInvoice,
     sendInvoice,
     markInvoicePaid,
+    // Planner operations
+    planners,
+    fetchPlanners,
+    createPlanner,
+    updatePlanner,
+    deletePlanner,
+    searchPlanners,
   };
 }
 

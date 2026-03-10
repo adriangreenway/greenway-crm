@@ -484,6 +484,69 @@ export const seedInvoices = [
   },
 ];
 
+// ── Seed planners for PRM ──
+export const seedPlanners = [
+  {
+    id: 'planner-001',
+    name: 'Sara Mitchell',
+    company: 'Mitchell Events',
+    email: 'sara@mitchellevents.com',
+    phone: '7135551234',
+    instagram: 'mitchellevents',
+    website: 'mitchellevents.com',
+    venues: ['The Astorian', 'Bell Tower on 34th'],
+    tier: 'strong',
+    first_contact_date: '2024-06-15',
+    last_outreach_date: '2025-11-20',
+    notes: 'Consistent referrals, great communication',
+  },
+  {
+    id: 'planner-002',
+    name: 'Jessica Chen',
+    company: 'JC Weddings',
+    email: 'jessica@jcweddings.com',
+    phone: '8325559876',
+    instagram: 'jcweddings',
+    website: 'jcweddings.com',
+    venues: ['The Corinthian', 'Hotel Granduca'],
+    tier: 'vip',
+    first_contact_date: '2023-09-01',
+    last_outreach_date: '2026-01-10',
+    notes: 'Top referral source, 6+ weddings',
+  },
+  {
+    id: 'planner-003',
+    name: 'David Park',
+    company: 'Park & Co Events',
+    email: 'david@parkcoevents.com',
+    phone: '2815553456',
+    venues: ['The Oak Atelier'],
+    tier: 'warm',
+    first_contact_date: '2025-08-20',
+    last_outreach_date: '2025-09-15',
+    notes: 'Met at NACE mixer, sent 1 referral',
+  },
+  {
+    id: 'planner-004',
+    name: 'Lauren Hayes',
+    tier: 'new',
+    first_contact_date: '2026-02-28',
+    notes: 'Instagram DM, has not referred yet',
+  },
+  {
+    id: 'planner-005',
+    name: 'Robert Kim',
+    company: 'Luxe Occasions',
+    email: 'robert@luxeoccasions.com',
+    phone: '7135557890',
+    venues: ['The Houstonian', 'River Oaks Country Club'],
+    tier: 'warm',
+    first_contact_date: '2025-03-10',
+    last_outreach_date: '2025-12-01',
+    notes: 'GCE overlap on 2 events',
+  },
+];
+
 // Helper to get display name from a lead
 export const getLeadName = (lead) =>
   `${lead.partner1_first} & ${lead.partner2_first} ${lead.partner2_last}`;
