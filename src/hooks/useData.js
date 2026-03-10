@@ -124,6 +124,19 @@ export default function useData() {
         }
       )
       .subscribe();
+
+    // Invoices realtime — trigger lead re-fetch on invoice changes
+    supabase
+      .channel("invoices-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "invoices" },
+        () => {
+          // Re-fetch leads since invoice_data JSONB may have changed
+          loadFromSupabase();
+        }
+      )
+      .subscribe();
   };
 
   // ── Google Calendar push (fire-and-forget after lead save) ──
@@ -909,6 +922,74 @@ export default function useData() {
     }
   }, []);
 
+  // ── Invoice operations ──
+  const fetchInvoices = useCallback(async (leadId) => {
+    if (!supabaseConfigured || !supabase) return [];
+    const { data, error } = await supabase
+      .from("invoices")
+      .select("*")
+      .eq("lead_id", leadId)
+      .order("type", { ascending: true });
+    if (error) { console.warn("Invoice fetch error:", error.message); return []; }
+    return data || [];
+  }, []);
+
+  const createInvoice = useCallback(async (leadId) => {
+    const token = (await supabase.auth.getSession())?.data?.session?.access_token;
+    const res = await fetch("/.netlify/functions/invoice-create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ lead_id: leadId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create invoices");
+    if (supabaseConfigured) {
+      const { data: updatedLead } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", leadId)
+        .single();
+      if (updatedLead) {
+        setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+      }
+    }
+    return data;
+  }, []);
+
+  const sendInvoice = useCallback(async (invoiceId) => {
+    const token = (await supabase.auth.getSession())?.data?.session?.access_token;
+    const res = await fetch("/.netlify/functions/invoice-send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ invoice_id: invoiceId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to send invoice");
+    return data;
+  }, []);
+
+  const markInvoicePaid = useCallback(async (invoiceId) => {
+    const token = (await supabase.auth.getSession())?.data?.session?.access_token;
+    const res = await fetch("/.netlify/functions/invoice-mark-paid", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ invoice_id: invoiceId }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to mark invoice as paid");
+    if (supabaseConfigured && data.invoice?.lead_id) {
+      const { data: updatedLead } = await supabase
+        .from("leads")
+        .select("*")
+        .eq("id", data.invoice.lead_id)
+        .single();
+      if (updatedLead) {
+        setLeads((prev) => prev.map((l) => (l.id === updatedLead.id ? updatedLead : l)));
+      }
+    }
+    return data;
+  }, []);
+
   // ── GCE Contract operations ──
   const uploadGceContract = useCallback(async (leadId, file) => {
     if (!supabaseConfigured) throw new Error("Supabase not configured");
@@ -993,6 +1074,11 @@ export default function useData() {
     uploadGceContract,
     removeGceContract,
     refreshLeads,
+    // Invoice operations
+    fetchInvoices,
+    createInvoice,
+    sendInvoice,
+    markInvoicePaid,
   };
 }
 

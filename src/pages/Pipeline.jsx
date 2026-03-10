@@ -12,6 +12,8 @@ import ProposalConfigPanel from "../components/ProposalConfigPanel";
 import ContractCard from "../components/ContractCard";
 import CreateContractModal from "../components/CreateContractModal";
 import BookClientModal from "../components/BookClientModal";
+import InvoiceCard from "../components/InvoiceCard";
+import CreateInvoiceModal from "../components/CreateInvoiceModal";
 import { getLeadName, formatCurrency, formatDate } from "../data/seed";
 import { formatPhone, formatCurrency as fmtCurrency, parseCurrency, formatGuestCount as fmtGuests } from "../utils/formatters";
 import { calculateLeadScore, getScoreDisplay } from "../utils/leadScoring";
@@ -201,7 +203,7 @@ const selectStyle = {
 };
 
 // Lead detail / edit drawer
-const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp, onOpenBookModal, uploadGceContract, removeGceContract }) => {
+const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onGenerateGigSheet, onOpenProposalConfig, fetchContracts, createContract, sendContract, voidContract, updateLead, onFollowUp, onOpenBookModal, uploadGceContract, removeGceContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid }) => {
   const [form, setForm] = useState(
     isNew
       ? {
@@ -248,6 +250,9 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
   const [contractsLoading, setContractsLoading] = useState(false);
   const [showCreateContract, setShowCreateContract] = useState(false);
   const [stagePromptContract, setStagePromptContract] = useState(null);
+  const [leadInvoices, setLeadInvoices] = useState([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
+  const [showCreateInvoiceModal, setShowCreateInvoiceModal] = useState(false);
   const deleteTimerRef = useRef(null);
 
   // Fetch contracts when Contracts tab is first opened
@@ -260,6 +265,17 @@ const LeadDrawer = ({ lead, isNew, onSave, onDelete, onClose, onPrepForCall, onG
         .finally(() => setContractsLoading(false));
     }
   }, [drawerTab, lead, isNew, fetchContracts]);
+
+  // Fetch invoices when Invoices tab is first opened
+  useEffect(() => {
+    if (drawerTab === "invoices" && lead && !isNew && fetchInvoices) {
+      setInvoicesLoading(true);
+      fetchInvoices(lead.id)
+        .then((data) => setLeadInvoices(data || []))
+        .catch(() => setLeadInvoices([]))
+        .finally(() => setInvoicesLoading(false));
+    }
+  }, [drawerTab, lead, isNew, fetchInvoices]);
 
   useEffect(() => {
     if (confirmingDelete) {
@@ -463,6 +479,43 @@ Suggest a price for this lead.`;
   const nonVoidedContracts = leadContracts.filter((c) => c.status !== "voided");
   const canCreateContract = lead && lead.partner1_first && lead.partner1_last && lead.email && lead.event_date && lead.venue && lead.price;
 
+  // Invoice helpers
+  const nonDraftInvoices = leadInvoices.filter((i) => i.status !== "draft");
+  const depositPaid = leadInvoices.some((i) => i.type === "deposit" && i.status === "paid");
+  const sortedInvoices = [...leadInvoices].sort((a, b) => {
+    const order = { deposit: 0, balance: 1, overtime: 2 };
+    return (order[a.type] ?? 99) - (order[b.type] ?? 99);
+  });
+
+  const canCreateInvoiceReason = (() => {
+    if (!lead?.price) return "Set a price first";
+    if (!lead?.email) return "Add client email first";
+    if (!lead?.event_date) return "Add event date first";
+    return null;
+  })();
+  const canCreateInvoice = !canCreateInvoiceReason;
+
+  const refreshInvoices = async () => {
+    if (!fetchInvoices || !lead) return;
+    const data = await fetchInvoices(lead.id);
+    setLeadInvoices(data || []);
+  };
+
+  const handleInvoiceCreate = async (leadId) => {
+    await createInvoice(leadId);
+    await refreshInvoices();
+  };
+
+  const handleInvoiceSend = async (invoiceId) => {
+    await sendInvoice(invoiceId);
+    await refreshInvoices();
+  };
+
+  const handleInvoiceMarkPaid = async (invoiceId) => {
+    await markInvoicePaid(invoiceId);
+    await refreshInvoices();
+  };
+
   const title = isNew
     ? "New Lead"
     : getLeadName(form);
@@ -571,7 +624,7 @@ Suggest a price for this lead.`;
       {/* Tab bar (only show for existing leads) */}
       {!isNew && (
         <div style={{ display: "flex", gap: 0, borderBottom: `1px solid ${COLORS.border}`, marginBottom: 20 }}>
-          {["details", "contracts"].map((tab) => (
+          {["details", "contracts", "invoices"].map((tab) => (
             <button
               key={tab}
               onClick={() => setDrawerTab(tab)}
@@ -590,7 +643,7 @@ Suggest a price for this lead.`;
                 gap: 6,
               }}
             >
-              {tab === "details" ? "Details" : "Contracts"}
+              {tab === "details" ? "Details" : tab === "contracts" ? "Contracts" : "Invoices"}
               {tab === "contracts" && nonVoidedContracts.length > 0 && (
                 <span
                   style={{
@@ -605,6 +658,22 @@ Suggest a price for this lead.`;
                   }}
                 >
                   {nonVoidedContracts.length}
+                </span>
+              )}
+              {tab === "invoices" && nonDraftInvoices.length > 0 && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    background: COLORS.bg,
+                    color: COLORS.textMuted,
+                    padding: "1px 6px",
+                    borderRadius: RADII.pill,
+                    minWidth: 18,
+                    textAlign: "center",
+                  }}
+                >
+                  {nonDraftInvoices.length}
                 </span>
               )}
             </button>
@@ -741,6 +810,69 @@ Suggest a price for this lead.`;
               lead={lead}
               onClose={() => setShowCreateContract(false)}
               onCreate={handleContractCreate}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Invoices Tab */}
+      {!isNew && drawerTab === "invoices" && (
+        <div>
+          {invoicesLoading ? (
+            <div style={{ textAlign: "center", padding: 40, color: COLORS.textMuted, fontSize: 13 }}>
+              Loading invoices...
+            </div>
+          ) : leadInvoices.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <Icon type="file" size={32} color={COLORS.border} />
+              <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.text, marginTop: 12 }}>
+                No invoices yet
+              </div>
+              <div style={{ fontSize: 12.5, color: COLORS.textMuted, marginTop: 4 }}>
+                Create deposit and balance invoices for this lead
+              </div>
+              <button
+                onClick={() => setShowCreateInvoiceModal(true)}
+                disabled={!canCreateInvoice}
+                title={canCreateInvoiceReason || undefined}
+                style={{
+                  marginTop: 16,
+                  background: COLORS.black,
+                  color: COLORS.white,
+                  padding: "10px 20px",
+                  borderRadius: RADII.sm,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: canCreateInvoice ? "pointer" : "not-allowed",
+                  fontFamily: FONTS.body,
+                  border: "none",
+                  opacity: canCreateInvoice ? 1 : 0.4,
+                }}
+              >
+                Create Invoices
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {sortedInvoices.map((inv) => (
+                <InvoiceCard
+                  key={inv.id}
+                  invoice={inv}
+                  depositPaid={depositPaid}
+                  onSend={handleInvoiceSend}
+                  onMarkPaid={handleInvoiceMarkPaid}
+                  onRefresh={refreshInvoices}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Create Invoice Modal */}
+          {showCreateInvoiceModal && (
+            <CreateInvoiceModal
+              lead={lead}
+              onClose={() => setShowCreateInvoiceModal(false)}
+              onCreate={handleInvoiceCreate}
             />
           )}
         </div>
@@ -1663,7 +1795,7 @@ Suggest a price for this lead.`;
   );
 };
 
-const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment, fetchContracts, createContract, sendContract, voidContract }) => {
+const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pendingLeadId, clearPendingLead, pendingAction, clearPendingAction, onNavigateToSettings, musicians, gigAssignments, addGigAssignment, removeGigAssignment, fetchContracts, createContract, sendContract, voidContract, fetchInvoices, createInvoice, sendInvoice, markInvoicePaid }) => {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState("All");
   const [brandFilter, setBrandFilter] = useState("All");
@@ -2045,6 +2177,10 @@ const Pipeline = ({ leads, addLead, updateLead, deleteLead, generateProposal, pe
           onOpenBookModal={() => setShowBookModal(true)}
           uploadGceContract={uploadGceContract}
           removeGceContract={removeGceContract}
+          fetchInvoices={fetchInvoices}
+          createInvoice={createInvoice}
+          sendInvoice={sendInvoice}
+          markInvoicePaid={markInvoicePaid}
         />
       )}
 

@@ -15,6 +15,7 @@ import Financials from "./pages/Financials";
 import MediaVaultPublic from "./components/MediaVaultPublic";
 import ProposalPublic from "./pages/ProposalPublic";
 import ContractPublic from "./pages/ContractPublic";
+import InvoicePublic from "./pages/InvoicePublic";
 
 // Login screen
 const LoginScreen = ({ onSignIn }) => {
@@ -216,6 +217,12 @@ export default function App() {
     return <ContractPublic slug={contractMatch[1]} />;
   }
 
+  // Public invoice route — renders independently, no auth
+  const invoiceMatch = path.match(/\/invoice\/(.+?)(?:\/)?$/);
+  if (invoiceMatch) {
+    return <InvoicePublic slug={invoiceMatch[1]} />;
+  }
+
   const {
     authenticated,
     loading: authLoading,
@@ -381,6 +388,10 @@ export default function App() {
               createContract={data.createContract}
               sendContract={data.sendContract}
               voidContract={data.voidContract}
+              fetchInvoices={data.fetchInvoices}
+              createInvoice={data.createInvoice}
+              sendInvoice={data.sendInvoice}
+              markInvoicePaid={data.markInvoicePaid}
             />
           )}
           {activeNav === "calendar" && (
