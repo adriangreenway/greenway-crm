@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   formatContractDate,
   formatContractCurrency,
@@ -9,33 +9,6 @@ const SUPABASE_URL = "https://xffmrambsjzmbquyqiea.supabase.co";
 
 const getPdfUrl = (pdfPath) =>
   `${SUPABASE_URL}/storage/v1/object/public/contract-pdfs/${pdfPath}`;
-
-// ── Injected CSS ──
-const CONTRACT_CSS = `
-  .gw-contract * { margin: 0; padding: 0; box-sizing: border-box; }
-  .gw-contract {
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    background: #0A0A09;
-    color: #F5F2ED;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    min-height: 100vh;
-  }
-  @keyframes contractSpin {
-    to { transform: rotate(360deg); }
-  }
-  .gw-contract input[type="text"]:focus {
-    border-bottom-color: #0A0A09 !important;
-  }
-  @media (max-width: 600px) {
-    .gw-contract .contract-container {
-      padding: 24px 16px !important;
-    }
-    .gw-contract .contract-card {
-      padding: 28px 24px !important;
-    }
-  }
-`;
 
 // ── Terms 8-15 (verbatim) ──
 const TERMS = [
@@ -48,6 +21,512 @@ const TERMS = [
   { num: 14, text: "Purchaser is responsible for providing parking or reimbursing all parking costs for artist and crew for the entire engagement period (load in through load out). Reimbursement is due at the conclusion of the event (end of load out). Overtime still applies if parking or access delays the schedule." },
   { num: 15, text: "Cocktail hour entertainment may be added at a later date at mutually agreed upon pricing." },
 ];
+
+// ── Injected CSS ──
+const CONTRACT_CSS = `
+  .gw-contract * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  .gw-contract {
+    --black: #0A0A09;
+    --charcoal: #111110;
+    --charcoal-mid: #1A1A18;
+    --cream: #F5F2ED;
+    --cream-muted: #D4D0C8;
+    --cream-dim: #8A867E;
+    --cream-faint: #5A5750;
+    --border: rgba(245,242,237,0.08);
+    --border-light: rgba(245,242,237,0.12);
+    --green-bg: #1A2E22;
+    --green-text: #7BC89C;
+    --green-border: rgba(123,200,156,0.15);
+    --red-bg: #2E1A1A;
+    --red-text: #C87B7B;
+    --red-border: rgba(200,123,123,0.15);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: var(--black);
+    color: var(--cream);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+    min-height: 100vh;
+  }
+
+  /* Reveal system */
+  .gw-contract .reveal {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease, transform 0.8s ease;
+  }
+  .gw-contract .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .gw-contract .reveal-delay-1 { transition-delay: 0.1s; }
+  .gw-contract .reveal-delay-2 { transition-delay: 0.2s; }
+  .gw-contract .reveal-delay-3 { transition-delay: 0.3s; }
+  .gw-contract .reveal-delay-4 { transition-delay: 0.4s; }
+  .gw-contract .reveal-delay-5 { transition-delay: 0.5s; }
+
+  /* Section content wrapper */
+  .gw-contract .section-content {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 0 40px;
+  }
+
+  /* Section divider */
+  .gw-contract .section-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  /* Section label */
+  .gw-contract .section-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 32px;
+  }
+
+  /* ── Header (compact) ── */
+  .gw-contract .contract-header {
+    padding: 80px 40px 60px;
+    text-align: center;
+  }
+  .gw-contract .cover-rule {
+    width: 60px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto;
+  }
+  .gw-contract .cover-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 12px;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    margin-top: 40px;
+    text-indent: 10px;
+  }
+  .gw-contract .cover-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(28px, 8vw, 42px);
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 4px 0;
+    font-weight: 400;
+    text-indent: 5px;
+  }
+  .gw-contract .cover-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 11px;
+    letter-spacing: 14px;
+    text-transform: uppercase;
+    color: var(--cream-dim);
+    font-weight: 400;
+    text-indent: 14px;
+  }
+  .gw-contract .contract-type-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-top: 24px;
+  }
+
+  /* ── Signed confirmation card ── */
+  .gw-contract .signed-card {
+    background: var(--green-bg);
+    border: 1px solid var(--green-border);
+    border-radius: 4px;
+    padding: 40px;
+    text-align: center;
+    margin-bottom: 0;
+  }
+  .gw-contract .signed-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 20px;
+    display: block;
+  }
+  .gw-contract .signed-icon circle,
+  .gw-contract .signed-icon path {
+    fill: none;
+    stroke: var(--green-text);
+  }
+  .gw-contract .signed-label {
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--green-text);
+    margin-bottom: 12px;
+  }
+  .gw-contract .signed-date {
+    font-size: 14px;
+    color: var(--cream-muted);
+  }
+
+  /* ── Event details grid ── */
+  .gw-contract .event-section { padding: 80px 0; }
+  .gw-contract .event-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+  }
+  .gw-contract .event-cell {
+    background: var(--charcoal-mid);
+    padding: 24px;
+  }
+  .gw-contract .event-cell.full-width {
+    grid-column: 1 / -1;
+  }
+  .gw-contract .event-cell-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 8px;
+  }
+  .gw-contract .event-cell-value {
+    font-size: 14px;
+    color: var(--cream);
+  }
+
+  /* ── Financial terms card ── */
+  .gw-contract .financial-section { padding: 80px 0; }
+  .gw-contract .financial-card {
+    background: var(--charcoal);
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    padding: 40px;
+    text-align: center;
+  }
+  .gw-contract .financial-price {
+    font-family: 'Bodoni Moda', serif;
+    font-size: clamp(28px, 6vw, 36px);
+    color: var(--cream);
+    font-weight: 400;
+    margin-bottom: 24px;
+  }
+  .gw-contract .financial-divider {
+    height: 0.5px;
+    background: var(--border-light);
+    margin: 0 auto 24px;
+    max-width: 200px;
+  }
+  .gw-contract .financial-rows {
+    max-width: 400px;
+    margin: 0 auto;
+  }
+  .gw-contract .financial-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+  }
+  .gw-contract .financial-row-label {
+    font-size: 13px;
+    color: var(--cream-dim);
+  }
+  .gw-contract .financial-row-value {
+    font-size: 13px;
+    color: var(--cream);
+  }
+
+  /* ── Provisions ── */
+  .gw-contract .provisions-section { padding: 80px 0; }
+  .gw-contract .provision-text {
+    font-size: 14px;
+    color: var(--cream-muted);
+    line-height: 1.9;
+    margin-bottom: 8px;
+  }
+  .gw-contract .provision-note {
+    font-size: 14px;
+    color: var(--cream-muted);
+    line-height: 1.9;
+    margin-top: 20px;
+  }
+
+  /* ── Return deadline ── */
+  .gw-contract .return-deadline {
+    text-align: center;
+    font-size: 9px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    padding: 40px 0;
+  }
+
+  /* ── Terms section ── */
+  .gw-contract .terms-section { padding: 80px 0; }
+  .gw-contract .terms-content {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .gw-contract .term {
+    font-size: 14px;
+    color: var(--cream-muted);
+    line-height: 1.9;
+    margin-bottom: 28px;
+  }
+  .gw-contract .term:last-child { margin-bottom: 0; }
+  .gw-contract .term-number {
+    font-weight: 700;
+    color: var(--cream);
+  }
+
+  /* ── Signatures section ── */
+  .gw-contract .signatures-section { padding: 80px 0; }
+  .gw-contract .sig-block { margin-bottom: 0; }
+  .gw-contract .sig-block-label {
+    font-size: 9px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    margin-bottom: 12px;
+  }
+  .gw-contract .sig-block-name {
+    font-size: 14px;
+    color: var(--cream);
+    margin-bottom: 12px;
+  }
+  .gw-contract .sig-display {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--cream);
+    margin-top: 4px;
+  }
+  .gw-contract .sig-date {
+    font-size: 13px;
+    color: var(--cream-dim);
+    margin-top: 4px;
+  }
+  .gw-contract .sig-divider {
+    height: 0.5px;
+    background: var(--border-light);
+    margin: 40px 0;
+  }
+
+  /* Signing input */
+  .gw-contract .sig-input {
+    width: 100%;
+    padding: 12px 0;
+    font-size: 18px;
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    border: none;
+    border-bottom: 2px solid var(--border-light);
+    outline: none;
+    background: transparent;
+    color: var(--cream);
+    transition: border-color 0.15s ease;
+  }
+  .gw-contract .sig-input:focus {
+    border-bottom-color: var(--cream);
+  }
+  .gw-contract .sig-input::placeholder {
+    color: var(--cream-faint);
+    font-style: italic;
+  }
+
+  /* Custom checkbox */
+  .gw-contract .consent-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 20px;
+    cursor: pointer;
+  }
+  .gw-contract .custom-checkbox {
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    transition: background 150ms ease, border-color 150ms ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .gw-contract .custom-checkbox.checked {
+    background: var(--cream);
+    border-color: var(--cream);
+  }
+  .gw-contract .check-svg {
+    width: 12px;
+    height: 12px;
+  }
+  .gw-contract .check-svg path {
+    fill: none;
+    stroke: var(--black);
+  }
+  .gw-contract .consent-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--cream-dim);
+  }
+
+  /* Sign + download buttons */
+  .gw-contract .sign-button {
+    width: 100%;
+    background: var(--cream);
+    color: var(--black);
+    border: none;
+    padding: 16px;
+    border-radius: 4px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 24px;
+    transition: opacity 0.2s ease;
+  }
+  .gw-contract .download-button {
+    width: 100%;
+    background: var(--cream);
+    color: var(--black);
+    border: none;
+    padding: 16px;
+    border-radius: 4px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    cursor: pointer;
+    margin-top: 32px;
+  }
+
+  /* Sign error + legal text */
+  .gw-contract .sign-error {
+    font-size: 13px;
+    color: var(--red-text);
+    margin-top: 12px;
+  }
+  .gw-contract .legal-text {
+    font-size: 11px;
+    color: var(--cream-faint);
+    text-align: center;
+    margin-top: 12px;
+  }
+  .gw-contract .pdf-unavailable {
+    font-size: 13px;
+    color: var(--cream-faint);
+    text-align: center;
+    margin-top: 24px;
+  }
+
+  /* ── Footer ── */
+  .gw-contract .contract-footer {
+    padding: 80px 40px 60px;
+    text-align: center;
+  }
+  .gw-contract .footer-contact {
+    margin-bottom: 32px;
+  }
+  .gw-contract .footer-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.2;
+  }
+  .gw-contract .footer-website {
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--cream-muted);
+    margin-bottom: 32px;
+  }
+  .gw-contract .logo-the {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 10px;
+    letter-spacing: 8px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 8px;
+  }
+  .gw-contract .logo-name {
+    font-family: 'Bodoni Moda', serif;
+    font-size: 24px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--cream);
+    margin: 2px 0;
+    font-weight: 400;
+    text-indent: 4px;
+  }
+  .gw-contract .logo-band {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 8px;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    color: var(--cream-faint);
+    text-indent: 12px;
+  }
+
+  /* ── Error / voided page ── */
+  .gw-contract .error-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 60px 32px;
+  }
+  .gw-contract .error-brand { margin-bottom: 60px; }
+  .gw-contract .error-message {
+    font-family: 'Bodoni Moda', serif;
+    font-style: italic;
+    font-size: clamp(22px, 5vw, 26px);
+    color: var(--cream);
+    line-height: 1.5;
+    max-width: 400px;
+    margin-bottom: 56px;
+  }
+  .gw-contract .error-sub {
+    font-size: 14px;
+    color: var(--cream-dim);
+    line-height: 1.6;
+    margin-bottom: 56px;
+    max-width: 400px;
+  }
+  .gw-contract .error-rule {
+    width: 40px;
+    height: 0.5px;
+    background: var(--cream-dim);
+    margin: 0 auto 40px;
+  }
+  .gw-contract .error-contact p {
+    font-size: 12px;
+    color: var(--cream-dim);
+    letter-spacing: 2px;
+    line-height: 2.2;
+  }
+
+  /* Links */
+  .gw-contract a { color: var(--cream-muted); text-decoration: none; }
+  .gw-contract a:hover { color: var(--cream); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .gw-contract .section-content { padding: 0 24px !important; }
+    .gw-contract .contract-header { padding: 60px 24px 48px !important; }
+    .gw-contract .event-grid { grid-template-columns: 1fr !important; }
+    .gw-contract .event-cell.full-width { grid-column: auto !important; }
+    .gw-contract .contract-footer { padding: 60px 24px 48px !important; }
+  }
+`;
 
 // ── Component ──
 const ContractPublic = ({ slug }) => {
@@ -63,6 +542,9 @@ const ContractPublic = ({ slug }) => {
   const [signError, setSignError] = useState("");
   const [signSuccess, setSignSuccess] = useState(null);
 
+  const containerRef = useRef(null);
+  const observerRef = useRef(null);
+
   // Fetch contract data
   useEffect(() => {
     if (!slug) {
@@ -77,7 +559,7 @@ const ContractPublic = ({ slug }) => {
           setVoided(true);
         } else if (data.success && data.slug) {
           setContract(data);
-          document.title = `Contract ${data.contract_number}`;
+          document.title = `The Greenway Band \u2014 ${data.contract_number}`;
         } else {
           setError(true);
         }
@@ -93,13 +575,45 @@ const ContractPublic = ({ slug }) => {
     document.head.appendChild(style);
 
     const prevBg = document.body.style.background;
+    const prevOverflow = document.body.style.overflowX;
     document.body.style.background = "#0A0A09";
+    document.body.style.overflowX = "hidden";
 
     return () => {
       document.head.removeChild(style);
       document.body.style.background = prevBg;
+      document.body.style.overflowX = prevOverflow;
     };
   }, []);
+
+  // Intersection Observer for reveals (header renders immediately)
+  useEffect(() => {
+    if (loading || error || voided) return;
+
+    const container = containerRef.current;
+    if (!container) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
+    );
+
+    container.querySelectorAll(".reveal").forEach((el) => {
+      if (!el.closest(".contract-header")) {
+        observerRef.current.observe(el);
+      }
+    });
+
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+    };
+  }, [loading, error, voided, contract, signSuccess]);
 
   // Sign handler
   const handleSign = async () => {
@@ -133,24 +647,32 @@ const ContractPublic = ({ slug }) => {
     }
   };
 
-  // ── Loading ──
+  // ── Loading: solid dark screen ──
   if (loading) {
-    return (
-      <div className="gw-contract" style={S.page}>
-        <div style={S.centered}>
-          <div style={S.spinner} />
-        </div>
-      </div>
-    );
+    return <div className="gw-contract" />;
   }
 
   // ── 404 ──
   if (error) {
     return (
-      <div className="gw-contract" style={S.page}>
-        <div style={S.centered}>
-          <div style={S.brandName}>THE GREENWAY BAND</div>
-          <div style={S.emptyMsg}>This contract is no longer available.</div>
+      <div className="gw-contract">
+        <div className="error-page">
+          <div className="error-brand">
+            <div className="cover-rule" />
+            <div className="cover-the">THE</div>
+            <div className="cover-name">GREENWAY</div>
+            <div className="cover-band">BAND</div>
+            <div className="cover-rule" style={{ marginTop: 16 }} />
+          </div>
+          <div className="error-message">
+            This contract is no longer available
+          </div>
+          <div className="error-rule" />
+          <div className="error-contact">
+            <p>Adrian Michael</p>
+            <p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p>
+            <p>(281) 467 1226</p>
+          </div>
         </div>
       </div>
     );
@@ -159,15 +681,27 @@ const ContractPublic = ({ slug }) => {
   // ── Voided ──
   if (voided) {
     return (
-      <div className="gw-contract" style={S.page}>
-        <div style={S.centered}>
-          <div style={S.brandName}>THE GREENWAY BAND</div>
-          <div style={S.emptyMsg}>This contract is no longer active.</div>
-          <div style={{ ...S.emptyMsg, marginTop: 12 }}>
+      <div className="gw-contract">
+        <div className="error-page">
+          <div className="error-brand">
+            <div className="cover-rule" />
+            <div className="cover-the">THE</div>
+            <div className="cover-name">GREENWAY</div>
+            <div className="cover-band">BAND</div>
+            <div className="cover-rule" style={{ marginTop: 16 }} />
+          </div>
+          <div className="error-message">
+            This contract is no longer active
+          </div>
+          <div className="error-sub">
             If you believe this is an error, please contact us at{" "}
-            <a href="mailto:adrian@greenwayband.com" style={S.mailLink}>
-              adrian@greenwayband.com
-            </a>
+            <a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a>
+          </div>
+          <div className="error-rule" />
+          <div className="error-contact">
+            <p>Adrian Michael</p>
+            <p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p>
+            <p>(281) 467 1226</p>
           </div>
         </div>
       </div>
@@ -184,429 +718,246 @@ const ContractPublic = ({ slug }) => {
   const finalSignedAt = signSuccess?.signed_at || c.signed_at;
   const pdfUrl = signSuccess?.pdf_url || (c.pdf_path ? getPdfUrl(c.pdf_path) : null);
 
+  const isDisabled = signing || typedName.trim().length < 2 || !consentChecked;
+
   return (
-    <div className="gw-contract" style={S.page}>
-      <div style={S.container} className="contract-container">
+    <div className="gw-contract" ref={containerRef}>
 
-        {/* White contract card */}
-        <div style={S.card} className="contract-card">
+      {/* ═══ HEADER ═══ */}
+      <header className="contract-header">
+        <div className="cover-rule" />
+        <div className="cover-the">THE</div>
+        <div className="cover-name">GREENWAY</div>
+        <div className="cover-band">BAND</div>
+        <div className="cover-rule" style={{ marginTop: 16 }} />
+        <div className="contract-type-label">AGREEMENT AND CONTRACT</div>
+      </header>
 
-          {/* Green confirmation banner (signed only) */}
-          {isSigned && (
-            <div style={S.confirmBanner}>
-              Contract signed on {formatContractDate(finalSignedAt)}. Thank you.
-            </div>
-          )}
+      <div className="section-divider" />
 
-          {/* Header */}
-          <div style={S.cardHeader}>AGREEMENT AND CONTRACT</div>
-          <div style={S.rule} />
-
-          {/* Items 1-7 */}
-          <div style={S.itemsSection}>
-            <Item num="1" label="NAME OF ARTIST(S)" value="The Greenway Band" />
-            <Item num="2" label="DATE OF ENGAGEMENT" value={formatContractDate(c.event_date)} />
-            <Item num="3" label="PLACE OF ENGAGEMENT" value={c.venue} />
-            <Item num="4" label="TIME OF ENGAGEMENT" value={c.time_of_engagement} />
-            <Item num="5" label="TYPE OF ENGAGEMENT" value="Wedding" />
-
-            <div style={S.item}>
-              <span><strong>6. CONTRACT PRICE:</strong> {formatContractCurrency(c.contract_price)}</span>
-            </div>
-            <div style={S.subItems}>
-              <div><strong>Deposit:</strong> {formatContractCurrency(c.deposit_amount)} (50% of contract price)</div>
-              <div><strong>Balance:</strong> {formatContractCurrency(balance)} (50% of contract price)</div>
-              <div><strong>Overtime:</strong> 12.5% of contract price per half hour</div>
-            </div>
-
-            <div style={S.item}>
-              <span><strong>7. LIGHTS PROVIDED BY:</strong> Artist</span>
-              <br />
-              <span style={{ paddingLeft: 20 }}><strong>SOUND PROVIDED BY:</strong> Artist</span>
+      {/* ═══ SIGNED CONFIRMATION ═══ */}
+      {isSigned && (
+        <section className="event-section">
+          <div className="section-content">
+            <div className="signed-card reveal">
+              <svg className="signed-icon" viewBox="0 0 48 48">
+                <circle cx="24" cy="24" r="23" strokeWidth="1" />
+                <path d="M15 24L21 30L33 18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <div className="signed-label">CONTRACT SIGNED</div>
+              <div className="signed-date">Signed on {formatContractDate(finalSignedAt)}</div>
             </div>
           </div>
+        </section>
+      )}
 
-          {/* Note */}
-          <div style={S.note}>
-            <strong>NOTE:</strong> Purchaser must provide ({c.meal_count}) hot meals for band and crew. Purchaser must provide an adequate break room for band and crew.
+      {isSigned && <div className="section-divider" />}
+
+      {/* ═══ EVENT DETAILS (Items 1-5) ═══ */}
+      <section className="event-section">
+        <div className="section-content">
+          <div className="section-label reveal">Event details</div>
+
+          <div className="event-grid reveal reveal-delay-1">
+            <div className="event-cell">
+              <div className="event-cell-label">Artist</div>
+              <div className="event-cell-value">The Greenway Band</div>
+            </div>
+            <div className="event-cell">
+              <div className="event-cell-label">Date</div>
+              <div className="event-cell-value">{formatContractDate(c.event_date)}</div>
+            </div>
+            <div className="event-cell">
+              <div className="event-cell-label">Venue</div>
+              <div className="event-cell-value">{c.venue}</div>
+            </div>
+            <div className="event-cell">
+              <div className="event-cell-label">Type</div>
+              <div className="event-cell-value">Wedding</div>
+            </div>
+            <div className="event-cell full-width">
+              <div className="event-cell-label">Time of Engagement</div>
+              <div className="event-cell-value">{c.time_of_engagement}</div>
+            </div>
           </div>
+        </div>
+      </section>
 
-          {/* Return deadline */}
-          <div style={S.deadline}>
-            CONTRACT MUST BE RETURNED WITHIN 5 DAYS OF ISSUANCE
+      <div className="section-divider" />
+
+      {/* ═══ FINANCIAL TERMS (Item 6) ═══ */}
+      <section className="financial-section">
+        <div className="section-content">
+          <div className="section-label reveal">Financial terms</div>
+
+          <div className="financial-card reveal reveal-delay-1">
+            <div className="financial-price">{formatContractCurrency(c.contract_price)}</div>
+            <div className="financial-divider" />
+            <div className="financial-rows">
+              <div className="financial-row">
+                <span className="financial-row-label">Deposit (50%)</span>
+                <span className="financial-row-value">{formatContractCurrency(c.deposit_amount)}</span>
+              </div>
+              <div className="financial-row">
+                <span className="financial-row-label">Balance (50%)</span>
+                <span className="financial-row-value">{formatContractCurrency(balance)}</span>
+              </div>
+              <div className="financial-row">
+                <span className="financial-row-label">Overtime</span>
+                <span className="financial-row-value">12.5% per half hour</span>
+              </div>
+            </div>
           </div>
+        </div>
+      </section>
 
-          {/* Terms 8-15 */}
-          <div style={S.termsSection}>
-            {TERMS.map((t) => (
-              <div key={t.num} style={S.term}>
-                <strong>{t.num}.</strong> {t.text}
+      <div className="section-divider" />
+
+      {/* ═══ PROVISIONS (Item 7) ═══ */}
+      <section className="provisions-section">
+        <div className="section-content">
+          <div className="section-label reveal">Provisions</div>
+
+          <div className="reveal reveal-delay-1">
+            <div className="provision-text">Lighting provided by artist</div>
+            <div className="provision-text">Sound provided by artist</div>
+            <div className="provision-note">
+              Purchaser must provide ({c.meal_count}) hot meals for band and crew. Purchaser must provide an adequate break room for band and crew.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══ RETURN DEADLINE ═══ */}
+      <div className="return-deadline reveal">
+        Contract must be returned within 5 days of issuance
+      </div>
+
+      <div className="section-divider" />
+
+      {/* ═══ TERMS AND CONDITIONS (Items 8-15) ═══ */}
+      <section className="terms-section">
+        <div className="section-content">
+          <div className="section-label reveal">Terms and conditions</div>
+
+          <div className="terms-content">
+            {TERMS.map((t, i) => (
+              <div key={t.num} className={`term reveal${i < 4 ? ` reveal-delay-${i + 1}` : ""}`}>
+                <span className="term-number">{t.num}.</span> {t.text}
               </div>
             ))}
           </div>
+        </div>
+      </section>
 
-          {/* Signatures header */}
-          <div style={{ ...S.rule, marginTop: 36 }} />
-          <div style={S.sigHeader}>SIGNATURES</div>
+      <div className="section-divider" />
+
+      {/* ═══ SIGNATURES ═══ */}
+      <section className="signatures-section">
+        <div className="section-content">
+          <div className="section-label reveal">Signatures</div>
 
           {/* Client signature block */}
-          <div style={S.sigBlock}>
-            <div style={S.sigLabel}>CLIENT</div>
-            <div style={S.sigName}>{clientFullName}</div>
+          <div className="sig-block reveal reveal-delay-1">
+            <div className="sig-block-label">Client</div>
+            <div className="sig-block-name">{clientFullName}</div>
 
             {isSigned ? (
               <>
-                <div style={S.sigDisplay}>{finalTypedName}</div>
-                <div style={S.sigDate}>{formatContractDate(finalSignedAt)}</div>
+                <div className="sig-display">{finalTypedName}</div>
+                <div className="sig-date">{formatContractDate(finalSignedAt)}</div>
               </>
             ) : (
               <>
                 <input
                   type="text"
+                  className="sig-input"
                   value={typedName}
                   onChange={(e) => setTypedName(e.target.value)}
                   placeholder="Type your full legal name"
                   disabled={signing}
-                  style={S.sigInput}
                 />
 
-                <label style={S.consentRow}>
-                  <input
-                    type="checkbox"
-                    checked={consentChecked}
-                    onChange={(e) => setConsentChecked(e.target.checked)}
-                    disabled={signing}
-                    style={S.checkbox}
-                  />
-                  <span style={S.consentText}>
-                    I agree that typing my name above constitutes my electronic signature on this contract, and that I have read and agree to all terms above.
+                <div
+                  className="consent-row"
+                  onClick={() => !signing && setConsentChecked(!consentChecked)}
+                >
+                  <div className={`custom-checkbox${consentChecked ? " checked" : ""}`}>
+                    {consentChecked && (
+                      <svg className="check-svg" viewBox="0 0 14 14">
+                        <path d="M3 7L6 10L11 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="consent-text">
+                    I agree that typing my name above constitutes my electronic signature on this contract, and that I have read and agree to all terms above
                   </span>
-                </label>
+                </div>
 
-                {signError && <div style={S.signError}>{signError}</div>}
+                {signError && <div className="sign-error">{signError}</div>}
 
                 <button
+                  className="sign-button"
                   onClick={handleSign}
-                  disabled={signing || typedName.trim().length < 2 || !consentChecked}
-                  style={{
-                    ...S.signBtn,
-                    opacity: (signing || typedName.trim().length < 2 || !consentChecked) ? 0.3 : 1,
-                    cursor: (signing || typedName.trim().length < 2 || !consentChecked)
-                      ? "not-allowed"
-                      : signing ? "wait" : "pointer",
-                  }}
+                  disabled={isDisabled}
+                  style={{ opacity: isDisabled ? 0.3 : 1 }}
                 >
                   {signing ? "Signing..." : "Sign Contract"}
                 </button>
 
-                <div style={S.legalText}>
-                  Your signature is legally binding under the Electronic Signatures in Global and National Commerce Act (ESIGN Act).
+                <div className="legal-text">
+                  Your signature is legally binding under the Electronic Signatures in Global and National Commerce Act (ESIGN Act)
                 </div>
               </>
             )}
           </div>
 
+          <div className="sig-divider" />
+
           {/* Artist signature block */}
-          <div style={{ ...S.sigBlock, marginTop: 32 }}>
-            <div style={S.sigLabel}>ARTIST</div>
-            <div style={S.sigName}>Adrian Michael</div>
-            <div style={S.sigDisplay}>Adrian Michael</div>
-            <div style={S.sigDate}>{formatContractDate(c.sent_at)}</div>
+          <div className="sig-block reveal reveal-delay-2">
+            <div className="sig-block-label">Artist</div>
+            <div className="sig-block-name">Adrian Michael</div>
+            <div className="sig-display">Adrian Michael</div>
+            <div className="sig-date">{formatContractDate(c.sent_at)}</div>
           </div>
 
           {/* PDF download (signed only) */}
           {isSigned && pdfUrl && (
             <button
+              className="download-button"
               onClick={() => window.open(pdfUrl, "_blank")}
-              style={S.downloadBtn}
             >
               Download Signed Contract (PDF)
             </button>
           )}
           {isSigned && !pdfUrl && (
-            <div style={S.pdfUnavailable}>PDF not available</div>
+            <div className="pdf-unavailable">PDF not available</div>
           )}
         </div>
+      </section>
 
-        {/* Footer */}
-        <div style={S.footer}>THE GREENWAY BAND</div>
-      </div>
+      <div className="section-divider" />
+
+      {/* ═══ FOOTER ═══ */}
+      <footer className="contract-footer">
+        <div className="footer-contact reveal">
+          <p>Adrian Michael</p>
+          <p><a href="mailto:adrian@greenwayband.com">adrian@greenwayband.com</a></p>
+          <p>(281) 467 1226</p>
+        </div>
+        <div className="footer-website reveal reveal-delay-1">greenwayband.com</div>
+        <div className="reveal reveal-delay-2">
+          <div className="cover-rule" style={{ marginBottom: 16 }} />
+          <div className="logo-the">THE</div>
+          <div className="logo-name">GREENWAY</div>
+          <div className="logo-band">BAND</div>
+          <div className="cover-rule" style={{ marginTop: 12 }} />
+        </div>
+      </footer>
+
     </div>
   );
-};
-
-// ── Item sub-component ──
-const Item = ({ num, label, value }) => (
-  <div style={S.item}>
-    <strong>{num}. {label}:</strong> {value}
-  </div>
-);
-
-// ── Styles ──
-const S = {
-  page: {
-    minHeight: "100vh",
-    background: "#0A0A09",
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-  },
-  centered: {
-    minHeight: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    justifyContent: "center",
-    alignItems: "center",
-    textAlign: "center",
-    padding: "40px 24px",
-  },
-  spinner: {
-    width: 32,
-    height: 32,
-    border: "3px solid rgba(245,242,237,0.15)",
-    borderTopColor: "#F5F2ED",
-    borderRadius: "50%",
-    animation: "contractSpin 0.8s linear infinite",
-  },
-  brandName: {
-    fontFamily: "'Bodoni Moda', serif",
-    fontSize: 16,
-    letterSpacing: 3,
-    textTransform: "uppercase",
-    color: "#F5F2ED",
-    marginBottom: 24,
-  },
-  emptyMsg: {
-    fontSize: 15,
-    color: "#9E9891",
-    lineHeight: 1.6,
-  },
-  mailLink: {
-    color: "#9E9891",
-    textDecoration: "underline",
-  },
-
-  // Container
-  container: {
-    maxWidth: 720,
-    margin: "0 auto",
-    padding: "40px 20px",
-  },
-
-  // Card
-  card: {
-    background: "#FFFFFF",
-    borderRadius: 8,
-    padding: "40px 48px",
-  },
-
-  // Confirmation banner
-  confirmBanner: {
-    background: "#D4E7DC",
-    padding: "16px 20px",
-    borderRadius: 8,
-    marginBottom: 24,
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#2D6A4F",
-  },
-
-  // Card header
-  cardHeader: {
-    fontFamily: "'Bodoni Moda', serif",
-    fontSize: 20,
-    fontWeight: 700,
-    textAlign: "center",
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    color: "#0A0A09",
-  },
-  rule: {
-    height: 1,
-    background: "#E8E5E0",
-    margin: "24px 0",
-  },
-
-  // Items
-  itemsSection: {
-    marginBottom: 0,
-  },
-  item: {
-    fontSize: 14.5,
-    lineHeight: 1.9,
-    color: "#0A0A09",
-    marginBottom: 4,
-  },
-  subItems: {
-    paddingLeft: 32,
-    fontSize: 14.5,
-    lineHeight: 1.9,
-    color: "#0A0A09",
-    marginBottom: 4,
-  },
-
-  // Note
-  note: {
-    marginTop: 20,
-    fontSize: 14.5,
-    lineHeight: 1.9,
-    color: "#0A0A09",
-  },
-
-  // Deadline
-  deadline: {
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: "#555",
-    margin: "28px 0",
-  },
-
-  // Terms
-  termsSection: {
-    marginBottom: 0,
-  },
-  term: {
-    fontSize: 14,
-    lineHeight: 1.9,
-    marginBottom: 16,
-    color: "#0A0A09",
-  },
-
-  // Signature header
-  sigHeader: {
-    textAlign: "center",
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: "#555",
-    margin: "24px 0",
-  },
-
-  // Signature block
-  sigBlock: {},
-  sigLabel: {
-    fontSize: 13,
-    fontWeight: 700,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    color: "#555",
-    marginBottom: 8,
-  },
-  sigName: {
-    fontSize: 14,
-    color: "#0A0A09",
-    marginBottom: 12,
-  },
-  sigDisplay: {
-    fontFamily: "'Bodoni Moda', serif",
-    fontStyle: "italic",
-    fontSize: 20,
-    color: "#0A0A09",
-    marginTop: 4,
-  },
-  sigDate: {
-    fontSize: 13,
-    color: "#555",
-    marginTop: 4,
-  },
-
-  // Signing input
-  sigInput: {
-    width: "100%",
-    padding: "12px 0",
-    fontSize: 16,
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    borderTop: "none",
-    borderLeft: "none",
-    borderRight: "none",
-    borderBottom: "2px solid #E8E5E0",
-    outline: "none",
-    background: "transparent",
-    color: "#0A0A09",
-    transition: "border-color 0.15s",
-  },
-
-  // Consent
-  consentRow: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: 10,
-    marginTop: 16,
-    cursor: "pointer",
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    marginTop: 2,
-    flexShrink: 0,
-    accentColor: "#0A0A09",
-    cursor: "pointer",
-  },
-  consentText: {
-    fontSize: 13,
-    lineHeight: 1.6,
-    color: "#555",
-  },
-
-  // Sign button
-  signBtn: {
-    width: "100%",
-    padding: 14,
-    marginTop: 20,
-    background: "#0A0A09",
-    color: "#FFFFFF",
-    border: "none",
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 600,
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    letterSpacing: 0.5,
-    transition: "opacity 0.15s",
-  },
-  signError: {
-    fontSize: 13,
-    color: "#C1292E",
-    marginTop: 12,
-  },
-  legalText: {
-    fontSize: 11,
-    color: "#9E9891",
-    textAlign: "center",
-    marginTop: 12,
-  },
-
-  // Download
-  downloadBtn: {
-    width: "100%",
-    padding: 14,
-    marginTop: 24,
-    background: "#0A0A09",
-    color: "#FFFFFF",
-    border: "none",
-    borderRadius: 8,
-    fontSize: 14,
-    fontWeight: 600,
-    fontFamily: "'Plus Jakarta Sans', sans-serif",
-    cursor: "pointer",
-    letterSpacing: 0.5,
-  },
-  pdfUnavailable: {
-    fontSize: 13,
-    color: "#9E9891",
-    textAlign: "center",
-    marginTop: 24,
-  },
-
-  // Footer
-  footer: {
-    textAlign: "center",
-    padding: "32px 0",
-    fontSize: 12,
-    color: "#555",
-    letterSpacing: 1,
-  },
 };
 
 export default ContractPublic;
