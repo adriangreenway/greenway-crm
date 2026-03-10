@@ -327,6 +327,15 @@ const Icon = ({ type, size = 18, color = COLORS.textMuted }) => {
         <line x1="6" y1="6" x2="18" y2="18" />
       </svg>
     ),
+    planners: (
+      <svg {...p}>
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18" />
+        <path d="M9 3v18" />
+        <circle cx="14.5" cy="14" r="2" />
+        <path d="M18 18.5c0-1.1-1.6-2-3.5-2s-3.5.9-3.5 2" />
+      </svg>
+    ),
     fileSignature: (
       <svg {...p}>
         <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />

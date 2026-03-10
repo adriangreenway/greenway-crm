@@ -12,6 +12,7 @@ import Content from "./pages/Content";
 import AiCrew from "./pages/AiCrew";
 import Settings from "./pages/Settings";
 import Financials from "./pages/Financials";
+import Planners from "./pages/Planners";
 import MediaVaultPublic from "./components/MediaVaultPublic";
 import ProposalPublic from "./pages/ProposalPublic";
 import ContractPublic from "./pages/ContractPublic";
@@ -392,6 +393,18 @@ export default function App() {
               createInvoice={data.createInvoice}
               sendInvoice={data.sendInvoice}
               markInvoicePaid={data.markInvoicePaid}
+            />
+          )}
+          {activeNav === "planners" && (
+            <Planners
+              planners={data.planners}
+              leads={data.leads}
+              fetchPlanners={data.fetchPlanners}
+              createPlanner={data.createPlanner}
+              updatePlanner={data.updatePlanner}
+              deletePlanner={data.deletePlanner}
+              searchPlanners={data.searchPlanners}
+              onOpenLead={handleOpenLead}
             />
           )}
           {activeNav === "calendar" && (

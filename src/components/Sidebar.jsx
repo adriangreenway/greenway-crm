@@ -5,6 +5,7 @@ import Icon from "../icons";
 const NAV_ITEMS = [
   { id: "dashboard", icon: "dashboard", label: "Dashboard" },
   { id: "pipeline", icon: "pipeline", label: "Pipeline" },
+  { id: "planners", icon: "planners", label: "Planners" },
   { id: "calendar", icon: "calendar", label: "Calendar" },
   { id: "bandops", icon: "music", label: "Band Ops" },
   { id: "content", icon: "grid", label: "Content" },
