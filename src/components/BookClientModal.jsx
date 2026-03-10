@@ -457,7 +457,8 @@ const BookClientModal = ({ lead, onClose, onSuccess, onOpenEmailDrafter, onUploa
   // ════════════════════════════════════════════
   // FORM STATE (both flows)
   // ════════════════════════════════════════════
-  const directDisabled = loading || !timeOfEngagement.trim() || !mealCount;
+  const noSession = !session?.access_token;
+  const directDisabled = loading || !timeOfEngagement.trim() || !mealCount || noSession;
 
   return (
     <>
@@ -662,6 +663,11 @@ const BookClientModal = ({ lead, onClose, onSuccess, onOpenEmailDrafter, onUploa
               >
                 {loading ? "Processing..." : "Create Contract & Invoice"}
               </button>
+              {noSession && (
+                <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>
+                  Booking requires a live Supabase connection
+                </div>
+              )}
             </>
           )}
 
@@ -769,14 +775,19 @@ const BookClientModal = ({ lead, onClose, onSuccess, onOpenEmailDrafter, onUploa
               {/* CTA */}
               <button
                 onClick={handleGceBook}
-                disabled={loading}
+                disabled={loading || noSession}
                 style={{
                   ...ctaStyle,
-                  opacity: loading ? 0.5 : 1,
+                  opacity: (loading || noSession) ? 0.5 : 1,
                 }}
               >
                 {loading ? "Confirming..." : "Confirm Booking"}
               </button>
+              {noSession && (
+                <div style={{ fontSize: 12, color: COLORS.textMuted, textAlign: "center", marginTop: 8 }}>
+                  Booking requires a live Supabase connection
+                </div>
+              )}
             </>
           )}
         </div>

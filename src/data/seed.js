@@ -16,7 +16,7 @@ export const seedLeads = [
     venue: "The Corinthian",
     guest_count: 280,
     brand: "Greenway",
-    stage: "Consultation Scheduled",
+    stage: "Booked",
     source: "GCE",
     source_detail: null,
     config: "10 piece",
@@ -24,12 +24,15 @@ export const seedLeads = [
     consultation_date: "2026-03-08T14:00:00Z",
     followup_date: null,
     contract_sent_date: null,
-    booked_date: null,
+    booked_date: "2026-04-15",
     notes: "Bride's mother saw us at the Wortham event. Groom is a musician.",
     planner_name: null,
     planner_email: null,
     lead_score: 65,
     lead_score_updated_at: "2026-03-04T14:00:00Z",
+    payment_routing: "gce",
+    gce_confirmed_at: "2026-03-05T14:30:00Z",
+    gce_contract_path: null,
     contract_data: { contract_status: "signed", contract_number: "CON-2026-001", signed_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), pdf_path: null },
   },
   {
@@ -60,6 +63,7 @@ export const seedLeads = [
     planner_email: null,
     lead_score: 48,
     lead_score_updated_at: "2026-03-02T11:00:00Z",
+    payment_routing: "direct",
     contract_data: { contract_status: "sent", contract_number: "CON-2026-002" },
   },
   {
@@ -90,6 +94,7 @@ export const seedLeads = [
     planner_email: null,
     lead_score: 48,
     lead_score_updated_at: "2026-03-03T09:00:00Z",
+    payment_routing: "direct",
   },
   {
     id: "lead-004",
@@ -119,6 +124,7 @@ export const seedLeads = [
     planner_email: null,
     lead_score: 42,
     lead_score_updated_at: "2026-03-04T16:00:00Z",
+    payment_routing: "direct",
   },
   {
     id: "lead-005",
@@ -148,6 +154,7 @@ export const seedLeads = [
     planner_email: null,
     lead_score: 90,
     lead_score_updated_at: "2026-03-01T10:00:00Z",
+    payment_routing: "direct",
   },
   {
     id: "lead-006",
@@ -177,6 +184,7 @@ export const seedLeads = [
     planner_email: null,
     lead_score: 0,
     lead_score_updated_at: "2026-03-04T09:00:00Z",
+    payment_routing: "direct",
   },
 ];
 
@@ -439,6 +447,40 @@ export const seedContracts = [
     notes: null,
     created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  },
+];
+
+// ── Seed invoices for Financials page ──
+export const seedInvoices = [
+  {
+    id: "inv-001",
+    lead_id: "lead-005",
+    amount: 7188,
+    status: "paid",
+    description: "Deposit",
+    method: "Stripe",
+    sent_at: "2026-02-10T09:00:00Z",
+    paid_at: "2026-02-15T10:00:00Z",
+  },
+  {
+    id: "inv-002",
+    lead_id: "lead-005",
+    amount: 7187,
+    status: "sent",
+    description: "Balance",
+    method: "Stripe",
+    sent_at: "2026-03-01T09:00:00Z",
+    paid_at: null,
+  },
+  {
+    id: "inv-003",
+    lead_id: "lead-002",
+    amount: 8438,
+    status: "paid",
+    description: "Deposit",
+    method: "Stripe",
+    sent_at: "2026-02-20T09:00:00Z",
+    paid_at: "2026-02-25T14:00:00Z",
   },
 ];
 

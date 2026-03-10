@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { id: "bandops", icon: "music", label: "Band Ops" },
   { id: "content", icon: "grid", label: "Content" },
   { id: "aicrew", icon: "spark", label: "AI Crew" },
+  { id: "financials", icon: "dollar", label: "Financials" },
 ];
 
 // NavItem — icon 18px + label 13.5px, active state with bg + left accent bar

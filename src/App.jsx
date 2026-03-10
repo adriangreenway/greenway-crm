@@ -11,6 +11,7 @@ import BandOps from "./pages/BandOps";
 import Content from "./pages/Content";
 import AiCrew from "./pages/AiCrew";
 import Settings from "./pages/Settings";
+import Financials from "./pages/Financials";
 import MediaVaultPublic from "./components/MediaVaultPublic";
 import ProposalPublic from "./pages/ProposalPublic";
 import ContractPublic from "./pages/ContractPublic";
@@ -425,6 +426,7 @@ export default function App() {
               createSmsMessage={data.createSmsMessage}
             />
           )}
+          {activeNav === "financials" && <Financials leads={data.leads} />}
           {activeNav === "settings" && <Settings fetchAllContracts={data.fetchAllContracts} />}
         </div>
       </div>
