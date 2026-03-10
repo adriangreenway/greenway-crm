@@ -6,6 +6,7 @@ import SlideOverPanel from "../components/SlideOverPanel";
 import EmptyState from "../components/EmptyState";
 import { formatCurrency, formatDate } from "../data/seed";
 import { formatPhone } from "../utils/formatters";
+import { computePlannerNudges } from "../utils/plannerNudges";
 
 // ── Tier config ──
 const TIER_COLORS = {
@@ -158,7 +159,12 @@ export default function Planners({
   const [sortAsc, setSortAsc] = useState(false);
   const [selectedPlanner, setSelectedPlanner] = useState(null);
   const [showNewModal, setShowNewModal] = useState(false);
+  const [nudgesExpanded, setNudgesExpanded] = useState(true);
+  const [nudgesShowAll, setNudgesShowAll] = useState(false);
   const { show: showToast, Toast } = useToast();
+
+  // Compute nudges
+  const nudges = useMemo(() => computePlannerNudges(planners, leads), [planners, leads]);
 
   // Auto-open planner drawer from cross-navigation
   useEffect(() => {
@@ -533,6 +539,128 @@ export default function Planners({
         ))}
       </div>
 
+      {/* Relationship Nudges */}
+      {nudges.length > 0 && (
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => setNudgesExpanded((prev) => !prev)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "4px 0",
+              marginBottom: nudgesExpanded ? 10 : 0,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                color: COLORS.textMuted,
+                letterSpacing: "0.04em",
+              }}
+            >
+              Relationship Nudges
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: COLORS.gold,
+                background: COLORS.amberLight,
+                borderRadius: RADII.pill,
+                padding: "2px 8px",
+                minWidth: 18,
+                textAlign: "center",
+              }}
+            >
+              {nudges.length}
+            </span>
+            <span
+              style={{
+                display: "inline-flex",
+                transition: "transform 0.2s ease",
+                transform: nudgesExpanded ? "rotate(90deg)" : "rotate(0deg)",
+              }}
+            >
+              <Icon type="chevron" size={14} color={COLORS.textMuted} />
+            </span>
+          </button>
+          {nudgesExpanded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {(nudgesShowAll ? nudges : nudges.slice(0, 5)).map((nudge, i) => (
+                <div
+                  key={`${nudge.planner.id}-${nudge.type}-${i}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    background: COLORS.white,
+                    border: `1px solid ${COLORS.borderLight}`,
+                    borderLeft: `3px solid ${COLORS.gold}`,
+                    borderRadius: RADII.sm,
+                    padding: "14px 16px",
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0, marginRight: 12 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.text }}>
+                      {nudge.planner.name}
+                    </div>
+                    <div style={{ fontSize: 13, color: COLORS.textMuted, marginTop: 2 }}>
+                      {nudge.text}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (nudge.actionLabel === "Open Profile") {
+                        const planner = (planners || []).find((p) => p.id === nudge.planner.id);
+                        if (planner) setSelectedPlanner(planner);
+                      } else {
+                        showToast("Open this planner's profile, then navigate to Pipeline to draft an email with their context.");
+                      }
+                    }}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      background: COLORS.black,
+                      color: COLORS.white,
+                      border: "none",
+                      borderRadius: RADII.sm,
+                      padding: "6px 14px",
+                      cursor: "pointer",
+                      fontFamily: FONTS.body,
+                      whiteSpace: "nowrap",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {nudge.actionLabel}
+                  </button>
+                </div>
+              ))}
+              {!nudgesShowAll && nudges.length > 5 && (
+                <div
+                  onClick={() => setNudgesShowAll(true)}
+                  style={{
+                    fontSize: 12,
+                    color: COLORS.gold,
+                    cursor: "pointer",
+                    paddingLeft: 4,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.textDecoration = "underline")}
+                  onMouseLeave={(e) => (e.currentTarget.style.textDecoration = "none")}
+                >
+                  Show all {nudges.length}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Planner Table */}
       {filteredPlanners.length === 0 ? (
         <div
@@ -646,7 +774,7 @@ export default function Planners({
                   onClick={() => setSelectedPlanner(p)}
                   onMail={() =>
                     showToast(
-                      "Email drafter integration coming in Phase 4"
+                      "Open this planner's profile, then navigate to Pipeline to draft an email with their context."
                     )
                   }
                   onView={() => setSelectedPlanner(p)}
@@ -1102,6 +1230,28 @@ function PlannerDrawer({
               }
               style={inputStyle}
             />
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split("T")[0];
+                handleField("last_outreach_date", today);
+                onSave(planner.id, { ...form, last_outreach_date: today, phone: form.phone.replace(/\D/g, "") });
+                showToast("Outreach date updated");
+              }}
+              style={{
+                marginTop: 6,
+                fontSize: 12,
+                fontWeight: 600,
+                background: COLORS.white,
+                color: COLORS.text,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: RADII.sm,
+                padding: "4px 12px",
+                cursor: "pointer",
+                fontFamily: FONTS.body,
+              }}
+            >
+              Mark as Contacted
+            </button>
           </div>
         </div>
 

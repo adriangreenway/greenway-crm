@@ -374,6 +374,8 @@ export default function App() {
               onNavigate={handleNavChange}
               onOpenLead={handleOpenLead}
               onAddLead={handleAddLead}
+              planners={data.planners}
+              onOpenPlanner={handleOpenPlanner}
             />
           )}
           {activeNav === "pipeline" && (

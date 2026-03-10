@@ -229,7 +229,7 @@ const getGreeting = () => {
   return "Good evening";
 };
 
-const Dashboard = ({ leads, musicians, onNavigate, onOpenLead, onAddLead }) => {
+const Dashboard = ({ leads, musicians, onNavigate, onOpenLead, onAddLead, planners, onOpenPlanner }) => {
   // Compute stat values
   const activeLeads = leads.filter(
     (l) => !["Booked", "Fulfilled", "Lost"].includes(l.stage)
@@ -447,7 +447,7 @@ const Dashboard = ({ leads, musicians, onNavigate, onOpenLead, onAddLead }) => {
           </div>
 
           {/* Claude Clues */}
-          <ClaudeClues leads={leads} onOpenLead={onOpenLead} />
+          <ClaudeClues leads={leads} onOpenLead={onOpenLead} planners={planners} onOpenPlanner={onOpenPlanner} />
         </div>
       </div>
     </div>

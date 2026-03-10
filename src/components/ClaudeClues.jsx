@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { COLORS, FONTS, RADII } from "../tokens";
 import Icon from "../icons";
 import { callClaude, BASE_SYSTEM_PROMPT, getApiKey, hasApiKey } from "../utils/claudeApi";
+import { computePlannerNudges } from "../utils/plannerNudges";
 
 // ── Insight type to icon mapping ──
 const INSIGHT_ICONS = {
@@ -44,11 +45,23 @@ const ShimmerInsight = ({ delay = 0 }) => (
   </div>
 );
 
-const ClaudeClues = ({ leads, onOpenLead }) => {
+const ClaudeClues = ({ leads, onOpenLead, planners, onOpenPlanner }) => {
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const hasGenerated = useRef(false);
+
+  // Compute top 2 planner nudges (client-side, independent of API)
+  const plannerNudgeItems = useMemo(() => {
+    const nudges = computePlannerNudges(planners || [], leads || []);
+    return nudges.slice(0, 2).map((n) => ({
+      type: "planner_nudge",
+      insight: n.text,
+      action: n.actionLabel === "Open Profile" ? "View planner profile" : "Navigate to Planners to follow up",
+      leadId: null,
+      _plannerId: n.planner.id,
+    }));
+  }, [planners, leads]);
 
   const generateInsights = useCallback(async () => {
     const apiKey = getApiKey();
@@ -291,10 +304,10 @@ Analyze and return insights.`;
         </div>
       )}
 
-      {/* Insights */}
+      {/* Insights + Planner Nudges */}
       {insights && !loading && !error && (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {insights.length === 0 ? (
+          {insights.length === 0 && plannerNudgeItems.length === 0 ? (
             <p
               style={{
                 fontSize: 13,
@@ -306,7 +319,7 @@ Analyze and return insights.`;
               No insights right now. Add more leads to get AI powered pipeline analysis.
             </p>
           ) : (
-            insights.map((item, i) => (
+            [...insights, ...plannerNudgeItems].map((item, i, arr) => (
               <div
                 key={i}
                 style={{
@@ -314,11 +327,13 @@ Analyze and return insights.`;
                   gap: 10,
                   padding: "10px 0",
                   borderBottom:
-                    i < insights.length - 1
+                    i < arr.length - 1
                       ? `1px solid ${COLORS.borderLight}`
                       : "none",
                   alignItems: "flex-start",
+                  cursor: item._plannerId ? "pointer" : "default",
                 }}
+                onClick={item._plannerId && onOpenPlanner ? () => onOpenPlanner(item._plannerId) : undefined}
               >
                 <div
                   style={{
@@ -334,9 +349,9 @@ Analyze and return insights.`;
                   }}
                 >
                   <Icon
-                    type={INSIGHT_ICONS[item.type] || "spark"}
+                    type={item.type === "planner_nudge" ? "planners" : (INSIGHT_ICONS[item.type] || "spark")}
                     size={13}
-                    color={COLORS.textMuted}
+                    color={item.type === "planner_nudge" ? COLORS.gold : COLORS.textMuted}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -378,6 +393,21 @@ Analyze and return insights.`;
                         >
                           View
                         </button>
+                      </>
+                    )}
+                    {item._plannerId && onOpenPlanner && (
+                      <>
+                        {" "}
+                        <span
+                          style={{
+                            color: COLORS.gold,
+                            fontWeight: 600,
+                            fontSize: 11.5,
+                            textDecoration: "underline",
+                          }}
+                        >
+                          View
+                        </span>
                       </>
                     )}
                   </div>
